@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<!--This is the main GPIO control-interface page for the AAIMI GPIO system.-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<link rel="stylesheet" type="text/css" href="aaimi_gpio.css" media="screen">
+<title>AAIMI GPIO RUN</title>
+<link rel="icon" type="image/ico" href="/tab.ico">
+</head>
+<body>
+<div class="row" style="width:100%;">
+<header>
+    <div>
+		<div class="controlbuttons"><button class="horizontal" onclick="showConfig()" id="setup" type="button" style="background-color:maroon;font-size:1.5em;color:white;">On/Off</button></div>
+		<div class="controlbuttons"><a href="index.html"><button class="horizontal" id="setup" type="button" style="background-color:DarkBlue;">Setup</button></a></div>
+        <div class="controlbuttons"><a href="aaimi_pi_run.html"><button class="horizontal" id="run" type="button" style="background-color:green;">Run</button></a></div>
+        <div class="controlbuttons"><button class="horizontal" onclick="showConfig()" id="reset" type="button" style="background-color:#696969;font-size:1.5em;">Maps</button></div>
+	</div>    
+</header>
+<!--Raspberry Pi column-->
+<div class="col-6 col-m-6 columns">
+	<!--	Div to show PWM speed slider-->
+	<div id="speed_display_div" style="display:none;">
+		<h2 id="speedHeading"></h2>
+		<button onclick="swapDiv('speed_display_div', 'pin_holder')">Back</button></a>
+        <div id="directionButtonsb" class="doublebuttons"><button class="horizontal" onclick="changeDirection('Backwards')" id="reversebutton" type="button" style="background-color:DarkBlue;">Reverse</button></div>
+		<div id="directionButtonsf" class="doublebuttons"><button class="horizontal" onclick="changeDirection('Forwards')" id="forwardbutton" type="button" style="background-color:maroon;border-color:white;color:white;">Forwards</button></div>
+		<p>
+		  <label for="amount">Speed:</label>
+		  <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
+		</p>
+		<br>
+		<div id="speed_div"></div>
+
+	</div>
+	<!--	Div to hold Javascript-generated buttons for all pins-->
+	<div id="pin_holder"></div>
+</div>
+<!--Arduino column-->
+<div class="col-6 col-m-12 columns2">
+</div>
+</div>
+<br>
+<script src="aaimi_gpio_run.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<!--This is the main GPIO pin-configuration page for the AAIMI GPIO system-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<title>AAIMI Pi Control</title>
+<link rel="stylesheet" type="text/css" href="aaimi_gpio.css" media="screen">
+<link rel="icon" type="image/ico" href="/tab.ico">
+</head>
+<body>
+<div class="row" style="width:100%;">
+<header>
+    <div>
+	<div class="controlbuttons"><button class="horizontal" onclick="openCloseOptions()" id="setup" type="button" style="background-color:maroon;font-size:1.5em;color:white;">On/Off</button></div>
+		<div class="controlbuttons"><a href="index.html"><button class="horizontal" id="setup" type="button" style="background-color:DarkBlue;">Setup</button></div>
+        <div class="controlbuttons"><a href="aaimi_gpio_run.html"><button class="horizontal" id="run" type="button" style="background-color:green;">Run</button></a></div>
+        <div class="controlbuttons"><button class="horizontal" id="maps" onclick="mapOptions()" type="button" style="background-color:#696969;font-size:1.5em;">Maps</button></div>
+	</div>    
+</header>
+<!--Div to provide options for starting and stopping program loop and shutting down Pi-->
+<div id="openCloseOptions" style="display:none;">
+	<button style="background-color:DarkGreen;color:white;margin-top:10px;margin-bottom:5px;font-size:1.5em;" onclick="switchOnProgram('startLoop', 'on')">Start AAIMI GPIO</button>
+	<button style="background-color:DarkBlue;color:white;margin-top:5px;margin-bottom:10px;font-size:1.5em;" onclick="switchOnProgram('startLoop', 'off')">Stop AAIMI GPIO</button>
+	<button style="background-color:maroon;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" onclick="switchOnProgram('killAll', 'off')">Shut down Pi</button>
+</div>
+<!--Div to provide options for saving pin maps and reserring default pin map-->
+<div id="mapOptions" style="display:none;">
+	<button id="resetdiv" onclick="resetOptions()" type="button" style="background-color:maroon;font-size:1.5em;color:white;margin-top:10px">Reset Pins</button>
+	<div id="resetDiv" style="display:none;">
+	<h2>Click the Reset button below to reset the main pin map and clear all GPIO pins.</h2>
+	<button id="reset" onclick="sendResetRequest()" type="button" style="margin-bottom:20px;background-color:maroon;font-size:1.3em;color:white;">Reset</button>
+</div>
+<button id="pinsavebutton" type="button" onclick="showSaveDiv()" style="background-color:DarkBlue;font-size:1.5em;margin-top:20px;margin-bottom:10px;color:white;"><b>Saved</b></button>
+<div id="savediv" style="display:none;width:100%"></div>
+	<div id="saveformdiv" style="display:none;width:100%">
+	<form id='saveform'>
+	<label style='color:green'>Save name</label><input style='background-color:gray;width:80%' name='savename'>
+	<input style='background-color:gray;width:80%' type='submit' value='Save' name='submit'>
+	</form>
+	<br>
+	</div>
+</div>
+<div class="col-6 col-m-6 columns">
+
+	<div id="pinFormDiv" style="display:none">
+	<p><a href="index.html" style="background-color:#DCDCDC">Back</a></p>
+	<br>
+
+<!--// INITIAL PIN FOR  -->
+	<form class="pinform" id="change_pin_setting" style="max-width:95%;">
+	<section>
+	<h2 id="formHeading"></h2>
+	<p>Change settings for this pin</p>
+	<h3>Nickname</h3>
+	<p>Enter a name for the pin.</p>
+	<input name="nickname">	
+	<h3>Choose pin type</h3>
+	<select onchange="changeFormFields('pinTypeSelect')" id="pinTypeSelect" name="pintype">
+	<option value="pending">Select</option>
+	<option value="Output">Output</option>
+	<option value="PWMOutputLed">PWM Output</option>
+	<option value="PWMOutput">PWM Motor</option>
+	<option value="Input">Input</option>
+	<option value="InputPullDown">InputPullDown</option>
+	<option value="InputPullUp">InputPullUp</option>
+	</select>
+	<input id="inToOut" name="submit" type="submit" value="Next">
+	</section>
+	</form>
+	<div id="tempFormHeading" style="display:none"></div>
+
+<!--// INPUT FORM  -->
+	<form class="inpinform" id="change_in_pin_setting" style="max-width:95%;display:none" >
+	<section id="inputSection" style="display:none">
+	<h3 class="notomarg">Input actions</h3>
+	<p>React when pin goes high or low?</p>
+	<select id="highOrLow" onchange="changeHighLow('highOrLow')" name="highOrLowChange">
+	<option value="Low">High</option>
+	<option value="High">Low</option>	
+	</select>
+	<p id="hilo">Choose what happens when this pin changes.</p>
+	<select onchange="changeFormFields('pinActionSelect')" id="pinActionSelect" name="pinActions">
+	<option value="pending">Select</option>
+	<option value="switchOut">Switch an output pin on</option>
+	<option value="countRecord">Count or record input events</option>
+	<option value="sendEmail">Send email</option>
+	<option value="InputPullUp">Send HTTP request</option>
+	</select>
+	</section>
+
+<!--// INPUT TO SWTCH OUTPUT FORM  -->
+	<section id="inputActionSection" style="display:none">
+	<p id="inOutNum">Enter output pin number.</p>
+	<input id="inOutNum" name="inOutPin">
+	<br>	
+	<p>Choose when this applies.</p>
+	<select id="chooseWhen" onchange="changeFormFields('chooseWhen')" name="inOutTiming">
+	<option value="Always">Always</option>
+	<option value="setTimes">Between set hours</option>
+	</select>
+	<br>
+	<input id="inOutTimeInpStart" name="inOutTimeS" style="display:none" value="00:00">
+	<input id="inOutTimeInpEnd" name="inOutTimeE" style="display:none" value="00:00"><br>
+	<p>Choose how long to leave the output set.</p>
+	<select id="timeOutPin" id="chooseWhen" onchange="changeFormFields('timeOutPin')" name="keepOn">
+	<option value="Indefinite">Indefinitely</option>
+	<option id=lowOption value="timeout">Set time after pin returns to normal</option>
+	<option id=lowOption2 value="timeoutEvent">Set time after initial event</option>
+	</select>
+	<input id="timeoutId" name="keepOnTime" style="display:none" value="0">
+	</section>
+	<section id="submitInput" style="display:none">
+	<input name="submit" type="submit" value="Next"> 
+	</section>
+	</form>	
+
+
+<!--// OUTPUT FORM  -->
+	<form class="outpinform" id="change_out_pin_setting" style="max-width:95%" >
+	<section id="outputSection" style="display:none">
+	<h3 class="notomarg">Output actions</h3>
+	<p>Default state for pin.</p>
+	<select id="outhighOrLow" name="outHighOrLowdefault">
+	<option value="High">High</option>
+	<option value="Low">Low</option>
+	</select>
+	<p id="hilo">Choose the type of pin control</p>
+	<select onchange="changeFormFields('outPinActionSelect')" id="outPinActionSelect" name="outPinActions">
+	<option value="pending">Select</option>
+	<option value="outManual">Manually switch on and off</option>
+	<option value="outTimed">Off on timeout</option>
+	<option value="outTimer">On/Off on timer</option>
+	</select>
+	</section>
+	<section id="pwmSection" style="display:none">
+	<h3 class="notomarg">PWM details</h3>
+	<p id="pwmMotorSpeedId" style="display:none">Enter the other pin number for the second motor wire.
+	<input name="motorPair" value="0"></p><br>
+	<p>Enter the starting speed.</p>
+	<input name="motorSpeed" value="0"><br>	
+	</section>
+
+
+<!--// OUTPUT TIMING  -->
+
+	<section id="outputTimerSection" style="display:none">
+	<p>Choose when this applies.</p>
+	<select id="chooseWhenOut" name="inOutTiming">
+	<option value="Always">Always</option>	
+	<option value="setTimes">Between set hours</option>
+	</select>
+	<p>Enter start time (24hr format).</p>
+	<input id="inOutTimeInpStart" name="inOutTimeS" value="00:00">
+	<p>Enter end time (24hr format).</p>
+	<input id="inOutTimeInpEnd" name="inOutTimeE" value="00:00"><br>
+	</section>
+	<section id="outputTimedSection" style="display:none">
+	<p>Choose how long to leave the output set.</p>
+	<select id="timeOutPinOut" id="chooseWhen" onchange="changeFormFields('timeOutPin')" name="keepOnOut">
+	<option value="Indefinite">Indefinitely</option>
+	<option id=lowOption value="timeout">Set time after pin returns to normal</option>
+	</select>
+	<input id="timeoutIdOut" name="keepOnTimeOut" value="0">
+	</section>
+	<section id="submitOutput" style="display:none">
+	<p id="inPutMessage" style="display:none">You can configure further settings for the on-input trigger when you setup the input pin</p>
+	<input name="submit" type="submit" value="Finish"> 
+	</section>
+	</form>		
+	</div>
+	
+	<!--	Div for pin buttons and divs-->
+	<div id="pin_set_holder"></div>
+
+</div>
+<!--Arduino column-->
+<div class="col-6 col-m-12 columns2">
+	<div id="ard_pin_set_holder"></div>
+</div>
+</div>
+<br>
+<script src="aaimi_gpio_set.js"></script>
+</body>
+</html>
+
