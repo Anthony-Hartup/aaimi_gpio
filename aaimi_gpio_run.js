@@ -33,7 +33,7 @@ setInterval(function(){
 	if (runMode == "Inputs") {
 		getPinStatus()
 	}
-}, 12017);
+}, 3017);
 
 // Hide details div for previous pin
 function hideDetailsDivs() {
