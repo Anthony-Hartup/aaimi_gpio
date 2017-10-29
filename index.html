@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-<title>AAIMI Pi Control</title>
+<title>AAIMI Pi Config</title>
 <link rel="stylesheet" type="text/css" href="aaimi_gpio.css" media="screen">
 <link rel="icon" type="image/ico" href="/tab.ico">
 </head>
@@ -27,6 +27,7 @@
 </div>
 <!--Div to provide options for saving pin maps and reserring default pin map-->
 <div id="mapOptions" style="display:none;">
+	<h2 id="mapName"></h2>
 	<button id="resetdiv" onclick="resetOptions()" type="button" style="background-color:maroon;font-size:1.5em;color:white;margin-top:10px">Reset Pins</button>
 	<div id="resetDiv" style="display:none;">
 	<h2>Click the Reset button below to reset the main pin map and clear all GPIO pins.</h2>
@@ -48,7 +49,7 @@
 	<p><a href="index.html" style="background-color:#DCDCDC">Back</a></p>
 	<br>
 
-<!--// INITIAL PIN FOR  -->
+<!--// INITIAL PIN FORM  -->
 	<form class="pinform" id="change_pin_setting" style="max-width:95%;">
 	<section>
 	<h2 id="formHeading"></h2>
@@ -104,7 +105,7 @@
 	<input id="inOutTimeInpStart" name="inOutTimeS" style="display:none" value="00:00">
 	<input id="inOutTimeInpEnd" name="inOutTimeE" style="display:none" value="00:00"><br>
 	<p>Choose how long to leave the output set.</p>
-	<select id="timeOutPin" id="chooseWhen" onchange="changeFormFields('timeOutPin')" name="keepOn">
+	<select id="timeOutPin" onchange="changeFormFields('timeOutPin')" name="keepOn">
 	<option value="Indefinite">Indefinitely</option>
 	<option id=lowOption value="timeout">Set time after pin returns to normal</option>
 	<option id=lowOption2 value="timeoutEvent">Set time after initial event</option>
@@ -173,10 +174,141 @@
 	
 	<!--	Div for pin buttons and divs-->
 	<div id="pin_set_holder"></div>
-
 </div>
+
+
 <!--Arduino column-->
 <div class="col-6 col-m-12 columns2">
+<div id="ardPinFormDiv" style="display:none">
+	<p><a href="index.html" style="background-color:#DCDCDC">Back</a></p>
+	<br>
+
+<!--// INITIAL ARDUINO PIN FORM  -->
+	<form class="pinform" id="change_ard_pin_setting" style="max-width:95%;">
+	<section>
+	<h2 id="formHeading"></h2>
+	<p>Change settings for this pin</p>
+	<h3>Nickname</h3>
+	<p>Enter a name for the pin.</p>
+	<input name="nickname">	
+<!--	<h3>Choose pin type</h3>-->
+<!--	<select onchange="changeFormFields('ardPinTypeSelect')" id="ardPinTypeSelect" name="pintype">-->
+<!--	<option value="pending">Select</option>-->
+<!--	<option class="ard_out" value="Output">Output</option>-->
+<!--	<option class="ard_in" value="Input">Input</option>-->
+<!--	<option class="ard_an" value="Analog">Analog</option>-->
+<!--	</select>-->
+	<input id="inToOut" name="submit" type="submit" value="Next">
+	</section>
+	</form>
+	<div id="tempFormHeading" style="display:none"></div>
+
+<!--// ANALOG INPUT FORM  -->
+	<form class="inpinform" id="change_ard_in_pin_setting" style="max-width:95%;display:none" >
+	<section id="inputSection" style="display:none">
+	<h3 class="notomarg">Input actions</h3>
+	<p id="defaultDialogue">React when pin goes High or Low?</p>
+	<select id="highOrLow" onchange="changeHighLow('highOrLow')" name="highOrLowChange">
+	<option value="Low">High</option>
+	<option value="High">Low</option>	
+	</select>
+	<p class="trig" style="display:none">Choose the trigger point from 0.0 to 5.0.</p>
+	<input name="trigger" class="trig" style="display:none">	
+	<p id="hilo">Choose what happens when this occurs.</p>
+	<select onchange="changeFormFields('ardPinActionSelect')" id="ardPinActionSelect" name="pinActions">
+	<option value="pending">Select</option>
+	<option value="switchOut">Switch an output pin on</option>
+	<option value="adjustPWM">Adjust PWM Pin</option>
+	<option value="countRecord">Count or record input events</option>
+	<option value="sendEmail">Send email</option>
+	<option value="HTTP">Send HTTP request</option>
+	</select>
+	</section>
+
+<!--// ANALOG INPUT TO SWTCH OUTPUT FORM  -->
+
+	<section id="inputActionSection" style="display:none">
+	<p class="inOutPWMSpeed" style="display:none">Enter PWM Speed.</p>
+	<input class="inOutPWMSpeed" name="inOutSpeed" style="display:none">
+	<p id="inOutNum">Enter output pin number.</p>
+	<input id="inOutNum" name="inOutPin">
+	<br>	
+	<p>Choose when this applies.</p>
+	<select id="ardChooseWhen" onchange="changeFormFields('ardChooseWhen')" name="inOutTiming">
+	<option value="Always">Always</option>
+	<option value="setTimes">Between set hours</option>
+	</select>
+	<br>
+	<input id="inOutTimeInpStart" name="inOutTimeS" style="display:none" value="00:00">
+	<input id="inOutTimeInpEnd" name="inOutTimeE" style="display:none" value="00:00"><br>
+	<p>Choose how long to leave the output set.</p>
+	<select id="ardTimeOutPin" onchange="changeFormFields('ardTimeOutPin')" name="keepOn">
+	<option value="Indefinite">Indefinitely</option>
+	<option id=lowOption value="timeout">Set time after pin returns to normal</option>
+	<option id=lowOption2 value="timeoutEvent">Set time after initial event</option>
+	</select>
+	<input id="timeoutId" name="keepOnTime" style="display:none" value="0">
+	</section>
+	<section id="submitInput" style="display:none">
+	<input name="submit" type="submit" value="Next"> 
+	</section>
+	</form>	
+
+
+<!--// ARDUINO OUTPUT FORM  -->
+	<form class="outpinform" id="change_out_pin_setting" style="max-width:95%" >
+	<section id="outputSection" style="display:none">
+	<h3 class="notomarg">Output actions</h3>
+	<p>Default state for pin.</p>
+	<select id="outhighOrLow" name="outHighOrLowdefault">
+	<option value="High">High</option>
+	<option value="Low">Low</option>
+	</select>
+	<p id="hilo">Choose the type of pin control</p>
+	<select onchange="changeFormFields('outArdPinActionSelect')" id="outArdPinActionSelect" name="outPinActions">
+	<option value="pending">Select</option>
+	<option value="outManual">Manually switch on and off</option>
+	<option value="outTimed">Off on timeout</option>
+	<option value="outTimer">On/Off on timer</option>
+	</select>
+	</section>
+	<section id="pwmSection" style="display:none">
+	<h3 class="notomarg">PWM details</h3>
+	<p id="pwmMotorSpeedId" style="display:none">Enter the other pin number for the second motor wire.
+	<input name="motorPair" value="0"></p><br>
+	<p>Enter the starting speed.</p>
+	<input name="motorSpeed" value="0"><br>	
+	</section>
+
+
+<!--// ARDUINO OUTPUT TIMING  -->
+
+	<section id="outputTimerSection" style="display:none">
+	<p>Choose when this applies.</p>
+	<select id="chooseWhenOut" name="inOutTiming">
+	<option value="Always">Always</option>	
+	<option value="setTimes">Between set hours</option>
+	</select>
+	<p>Enter start time (24hr format).</p>
+	<input id="inOutTimeInpStart" name="inOutTimeS" value="00:00">
+	<p>Enter end time (24hr format).</p>
+	<input id="inOutTimeInpEnd" name="inOutTimeE" value="00:00"><br>
+	</section>
+	<section id="outputTimedSection" style="display:none">
+	<p>Choose how long to leave the output set.</p>
+	<select id="timeOutPinOut" id="chooseWhen" onchange="changeFormFields('timeOutPin')" name="keepOnOut">
+	<option value="Indefinite">Indefinitely</option>
+	<option id=lowOption value="timeout">Set time after pin returns to normal</option>
+	</select>
+	<input id="timeoutIdOut" name="keepOnTimeOut" value="0">
+	</section>
+	<section id="submitOutput" style="display:none">
+	<p id="inPutMessage" style="display:none">You can configure further settings for the on-input trigger when you setup the input pin</p>
+	<input name="submit" type="submit" value="Finish"> 
+	</section>
+	</form>		
+	</div>
+
 	<div id="ard_pin_set_holder"></div>
 </div>
 </div>
