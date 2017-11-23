@@ -15,6 +15,7 @@
 <body>
 <div class="row" style="width:100%;">
 <header>
+	<!--	Main Nav panel-->
     <div>
 		<div class="controlbuttons"><button class="horizontal" onclick="showConfig()" id="setup" type="button" style="background-color:maroon;font-size:1.5em;color:white;">On/Off</button></div>
 		<div class="controlbuttons"><a href="index.html"><button class="horizontal" id="setup" type="button" style="background-color:DarkBlue;">Setup</button></a></div>
@@ -22,12 +23,13 @@
         <div class="controlbuttons"><button class="horizontal" onclick="showConfig()" id="reset" type="button" style="background-color:#696969;font-size:1.5em;">Maps</button></div>
 	</div>    
 </header>
+
 <!--Raspberry Pi column-->
 <div class="col-6 col-m-6 columns">
 	<!--	Div to show PWM speed slider-->
 	<div id="speed_display_div" style="display:none;">
 		<h2 id="speedHeading"></h2>
-		<button onclick="swapDiv('speed_display_div', 'pin_holder')">Back</button></a>
+		<button onclick="swapDiv('speed_display_div', 'pin_holder')">Back</button>
         <div id="directionButtonsb" class="doublebuttons"><button class="horizontal" onclick="changeDirection('Backwards')" id="reversebutton" type="button" style="background-color:DarkBlue;">Reverse</button></div>
 		<div id="directionButtonsf" class="doublebuttons"><button class="horizontal" onclick="changeDirection('Forwards')" id="forwardbutton" type="button" style="background-color:maroon;border-color:white;color:white;">Forwards</button></div>
 		<p>
@@ -35,9 +37,33 @@
 		  <input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
 		</p>
 		<br>
+		<!--		Slider div for PWM speed control-->
 		<div id="speed_div"></div>
-
 	</div>
+
+	<!--	Div to show stepper motor controls-->
+	<div id="stepper_display_div" style="background-color:black;display:none;">
+		<h2 id="stepperHeading" style="text-align:center;">Stepper Motor Control</h2>
+		<button onclick="swapDiv('stepper_display_div', 'pin_holder')">Back</button>
+        <div id="directionButtonsb" class="doublebuttons"><button class="horizontal" onclick="set_stepper_speed()" id="reversebutton" type="button" style="background-color:DarkBlue;border-color:white;color:white;">Speed</button></div>
+		<div id="directionButtonsf" class="doublebuttons"><button class="horizontal" onclick="setOscillate(0)" id="forwardbutton" type="button" style="background-color:maroon;border-color:white;color:white;">Oscillate</button></div>
+		<div style="display:none;" id="oscillate" class="doublebuttons"><button class="horizontal" onclick="setOscillate(1)" id="oscbutton" type="button" style="background-color:maroon;border-color:white;color:white;">OscillateOff</button></div>
+		<p>
+		  <label for="stepamount" style="color:white;text-align:center;">Position</label>
+		<!--Displays stepper motor position in degrees-->
+		  <input type="text" id="stepamount" readonly style="border:0; color:#f6931f; font-weight:bold; width:80%;margin-right:auto;margin-left:auto;text-align:center;" >
+		</p>
+		<p style="color:white;text-align:center;"><span onclick='centerMotor(1)' style='background-color:DarkBlue'>LEFT</span> | <span onclick='centerMotor(2)' style='background-color:green'>CENTER</span> | <span onclick='centerMotor(3)' style='background-color:DarkBlue'>RIGHT</p>
+		<br>
+		<!--Slider div for stepper motor position control-->
+		<div id="stepper_pos_div" style="background-color:blue;"></div>
+		<br>
+		<button onclick="sendPosition()" type="button" style="background-color:DarkBlue;color:white;">Change Position</button>
+		<button onclick="setZeroPosition()" type="button" style="background-color:Maroon;color:white;">Set Zero</button>
+		<br>
+	</div>
+	<br>
+
 	<!--	Div to hold Javascript-generated buttons for all pins-->
 	<div id="pin_holder"></div>
 </div>

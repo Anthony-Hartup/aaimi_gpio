@@ -23,6 +23,24 @@
 <div id="openCloseOptions" style="display:none;">
 	<button style="background-color:DarkGreen;color:white;margin-top:10px;margin-bottom:5px;font-size:1.5em;" onclick="switchOnProgram('startLoop', 'on')">Start AAIMI GPIO</button>
 	<button style="background-color:DarkBlue;color:white;margin-top:5px;margin-bottom:10px;font-size:1.5em;" onclick="switchOnProgram('startLoop', 'off')">Stop AAIMI GPIO</button>
+	<button style="background-color:gray;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" id="emailButton" onclick="showDiv('emailDiv', 'none', 'emailButtonOff', 'none')">Set Email Pass</button>
+	<button style="background-color:gray;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;display:none;" id="emailButtonOff" onclick="showDiv('none', 'emailDiv', 'none', 'emailButtonOff')">Back</button>
+<div id="emailDiv" style="display:none;">
+	<h2>Set Email password</h2>
+	<form id="emailform">
+	<input style='width:80%;' name="emailInput">
+	<input style='background-color:gray;width:80%;' type='submit' value='Submit' name='submit'>
+	</form>
+</div>
+	<button style="background-color:gray;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" id="websiteButton" onclick="showDiv('websiteDiv', 'none', 'websiteButtonOff', 'none')">Set website pass</button>
+	<button style="background-color:gray;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;display:none;" id="websiteButtonOff" onclick="showDiv('none', 'websiteDiv', 'none', 'websiteButtonOff')">Back</button>
+<div id="websiteDiv" style="display:none;">
+	<h2>Set website password</h2>
+	<form id="websiteform">
+	<input style='width:80%;' name="websiteInput">
+	<input style='background-color:gray;width:80%;' type='submit' value='Submit' name='submit'>
+	</form>
+</div>
 	<button style="background-color:maroon;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" onclick="switchOnProgram('killAll', 'off')">Shut down Pi</button>
 </div>
 <!--Div to provide options for saving pin maps and reserring default pin map-->
@@ -63,6 +81,7 @@
 	<option value="Output">Output</option>
 	<option value="PWMOutputLed">PWM Output</option>
 	<option value="PWMOutput">PWM Motor</option>
+	<option value="Stepper">Stepper Motor</option>
 	<option value="Input">Input</option>
 	<option value="InputPullDown">InputPullDown</option>
 	<option value="InputPullUp">InputPullUp</option>
@@ -87,9 +106,39 @@
 	<option value="switchOut">Switch an output pin on</option>
 	<option value="countRecord">Count or record input events</option>
 	<option value="sendEmail">Send email</option>
-	<option value="InputPullUp">Send HTTP request</option>
+	<option value="sendWebRequest">Send HTTP request</option>
 	</select>
 	</section>
+
+	<section id="emailSection" style="display:none;">
+	<p>Enter the heading for your email.</p>
+	<input name="email_heading" value="EmailHeading">
+	</section>
+
+	<section id="websiteSection" style="display:none;">
+	<p>Enter the heading for your email.</p>
+
+	<input name="websiteKey1" value="First key">
+	<select onchange="changeFormFields('webArg1')" id="webArg1" name="webArg1">
+	<option value="gpioPinName">Pin name</option>
+	<option value="custom1">Custom</option>		
+	</select>
+	<section id="value1" style="display:none">
+	<input name="customValue1" value="Your message">
+	</section>
+
+	<input name="websiteKey2" value="Second key">
+	<select onchange="changeFormFields('webArg2')" id="webArg2" name="webArg2">
+	<option value="gpioPinName">Pin State</option>
+	<option value="analogValue">Analog Value</option>
+	<option value="custom2">Custom</option>		
+	</select>
+	<section id="value2" style="display:none">
+	<input name="customValue2" value="YourMessage">
+	</section>
+
+	</section>
+
 
 <!--// INPUT TO SWTCH OUTPUT FORM  -->
 	<section id="inputActionSection" style="display:none">
@@ -142,7 +191,37 @@
 	<p>Enter the starting speed.</p>
 	<input name="motorSpeed" value="0"><br>	
 	</section>
-
+	<section id="stepperSection" style="display:none">
+	<h3 class="notomarg">Stepper details</h3>
+	<h3>Pins</h3>
+	<p>Enter the second pin number for the second motor wire.</p>
+	<input name="secondPin" value="0"></p><br>
+	<p>Enter the third pin number for the third motor wire.</p>
+	<input name="thirdPin" value="0"></p><br>
+	<p>Enter the fourth pin number for the fourth motor wire.</p>
+	<input name="fourthPin" value="0"></p><br>
+	<h3>Positions</h3>
+	<p>Enter the default starting position (0-360).</p>
+	<p>This is the position the motor will return to when switched off.</p>
+	<input name="stepPosition" value="0"><br>
+	<p>Set a left stopping point for oscillating.</p>
+	<input name="leftPosition" value="0"><br>	
+	<p>Set a right stopping point for oscillating.</p>
+	<input name="rightPosition" value="0"><br>
+	<h3>Rotation</h3>
+	<p>Enter the starting speed.</p>
+	<p>This is the pause in mill-seconds between steps.</p>
+	<input name="stepMotorSpeed" value=".006"><br>	
+	<p>Enter the multiplier to convert steps to degrees.</p>
+	<p>This is the position the motor will return to when switched off.</p>
+	<input name="adjuster" value="0"><br>
+	<p>Enter the Rotation method.</p>
+	<p>Manually move to position or oscillate.</p>
+	<select name="rotationType">
+	<option value="position">Move to position</option>
+	<option value="oscillate">Oscilate</option>
+	</select>
+	</section>
 
 <!--// OUTPUT TIMING  -->
 
@@ -191,13 +270,6 @@
 	<h3>Nickname</h3>
 	<p>Enter a name for the pin.</p>
 	<input name="nickname">	
-<!--	<h3>Choose pin type</h3>-->
-<!--	<select onchange="changeFormFields('ardPinTypeSelect')" id="ardPinTypeSelect" name="pintype">-->
-<!--	<option value="pending">Select</option>-->
-<!--	<option class="ard_out" value="Output">Output</option>-->
-<!--	<option class="ard_in" value="Input">Input</option>-->
-<!--	<option class="ard_an" value="Analog">Analog</option>-->
-<!--	</select>-->
 	<input id="inToOut" name="submit" type="submit" value="Next">
 	</section>
 	</form>
@@ -221,8 +293,35 @@
 	<option value="adjustPWM">Adjust PWM Pin</option>
 	<option value="countRecord">Count or record input events</option>
 	<option value="sendEmail">Send email</option>
-	<option value="HTTP">Send HTTP request</option>
+	<option value="sendWebRequest">Send HTTP request</option>
 	</select>
+	</section>
+
+	<section id="emailSection" style="display:none;">
+	<p>Enter the heading for your email.</p>
+	<input name="email_heading" value="EmailHeading">
+	</section>
+
+	<section id="websiteSection" style="display:none;">
+	<p>Enter the keys and values to send to the webpage.</p>
+	<input name="websiteKey1" value="First key">
+	<select onchange="changeFormFields('webArg1')" id="webArg1" name="webArg1">
+	<option value="gpioPinName">Pin name</option>
+	<option value="custom1">Custom</option>		
+	</select>
+	<section id="value1" style="display:none">
+	<input name="customValue1" value="Your message">
+	</section>
+	<input name="websiteKey2" value="Second key">
+	<select onchange="changeFormFields('webArg2')" id="webArg2" name="webArg2">
+	<option value="gpioPinName">Pin State</option>
+	<option value="analogValue">Analog Value</option>
+	<option value="custom2">Custom</option>		
+	</select>
+	<section id="value2" style="display:none">
+	<input name="customValue2" value="YourMessage">
+	</section>
+
 	</section>
 
 <!--// ANALOG INPUT TO SWTCH OUTPUT FORM  -->
@@ -242,6 +341,7 @@
 	<input id="inOutTimeInpStart" name="inOutTimeS" style="display:none" value="00:00">
 	<input id="inOutTimeInpEnd" name="inOutTimeE" style="display:none" value="00:00"><br>
 	<p>Choose how long to leave the output set.</p>
+
 	<select id="ardTimeOutPin" onchange="changeFormFields('ardTimeOutPin')" name="keepOn">
 	<option value="Indefinite">Indefinitely</option>
 	<option id=lowOption value="timeout">Set time after pin returns to normal</option>

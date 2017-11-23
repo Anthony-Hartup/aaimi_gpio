@@ -1,10 +1,10 @@
 
-var commandPHP = "aaimi_gpio.php"; // PHP file taht sends socket requests to aaimi_gpio.py
+var commandPHP = "aaimi_gpio.php"; // PHP file that sends socket requests to aaimi_gpio.py
 var current_pin_map = "session";  // Default pin map from JSON pin file
 var current_pin_status = "Pending";  // Is current pin High or Low
-var current_pin_setting = "Pending"; // Type of Output or Input?
-var active_current_pin = "NoPin"; // Currently user-selected pin
-var current_pin = "NoPin";  // Current pin during getPinStatus()
+var current_pin_setting = "Pending"; // Type: Output, Input or analog
+var active_current_pin = "NoPin"; // Current user-selected pin
+var current_pin = "NoPin";  // Current pin during getPinStatus() and getArdPinStatus()
 var targetpindiv = "NoPin";
 var current_speed = 0; // Speed of currently selected PWM pin
 var activePins = [];  // Pins in use
@@ -14,10 +14,10 @@ var allPins = {};
 var activePwmPins = {};
 var pageText = ""; // HTML to populate pin control div
 var oldPageText = "";  // HTML from previou file check to compare with pageText
-var previouspindiv = "";  // Keep track of last div shown
-// List of all possible IO pins on Arduino
+var previouspindiv = "";  // Keep track of last div shown 
+// List of all IO pins on Arduino
 var arduinoPinList = ["D0", "A5", "D1", "A4", "D2", "A3", "D3", "A2", "D4", "A1", "D5", "A0", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13"];
-// Last time JSON file changed
+// Last time JSON pin file changed
 var aaimi_file_time = 0;
 
 $(document).ready(function(){
@@ -83,6 +83,67 @@ function changeDirection(rotation) {
 	});	
 };
 
+// Switch a PWM motor or LED (on/off, pin number, motor/LED)
+function switchPwmMotPin(action, swpin, pwmType) {
+	var pwmOn = "yes";
+	var mess = "TYPE: " + pwmType;
+	var switchCommand = "";
+	// Build POST message
+	if (pwmType == 0) {
+		// Will be motor
+		switchAction = "switchMotor";
+		$('div#directionButtonsb').attr('style', 'display:block');
+		$('div#directionButtonsf').attr('style', 'display:block');
+		var switchCommand = activePwmPins[active_current_pin]["name"] + " " + action + " " + activePwmPins[active_current_pin]["direction"];
+	}
+	else {
+		// Will be LED, hide direction buttons
+		switchAction = "switchPWM";
+		$('div#directionButtonsb').attr('style', 'display:none');
+		$('div#directionButtonsf').attr('style', 'display:none');
+		switchCommand = switchCommand + active_current_pin.replace("gpio_", "") + " " + action;
+	}
+	// Send POST message via PHP
+	$.post(commandPHP, {'commandsection':switchAction, 'command':switchCommand}, function(data) {
+		if (data == "Done") {
+			pwmOn = "yes";
+		}
+		else {
+			alert(data);
+		}
+	});
+	// Modify divs , arrays and classes based on High/Low
+	var pinDisplayName = "GPIO " + swpin + ": PWM output";
+	thisdiv = "div#pinid" + active_current_pin.replace("gpio_", "");
+	if (action == 1 && pwmOn == "yes") { 
+		// Switch on, show PWM window with slider and reset status and speed
+		$('h2#speedHeading').text(pinDisplayName);
+		$('div#pin_holder').attr('style', 'display:none');
+		$('div#speed_display_div').attr('style', 'display:block');
+		allPins[active_current_pin]["status"] = "High"	
+		allPins[active_current_pin]["speed"] = allPins[active_current_pin]["default_speed"]	
+		// Determine class for pin status and change to class for new status
+		classChoiceOld = switchAction + "Low";		
+		classChoiceNew = switchAction + "High";	
+		$(thisdiv).removeClass(classChoiceOld).addClass(classChoiceNew);
+	}
+	else if (action == 0) {
+		// switch off, hide PWM window and reset status and speed
+		$('div#pin_holder').attr('style', 'display:block');
+		$('div#speed_display_div').attr('style', 'display:none');
+		allPins[active_current_pin]["status"] = "Low";
+		allPins[active_current_pin]["speed"] = 0;	
+		$("#speed_div").slider("value", $("#speed_div").slider("option", "min") );
+		$( "#amount" ).val( $( "#speed_div" ).slider( "value" ) );
+		// Determine class for pin status and change to class for new status
+		classChoiceOld = switchAction + "High";		
+		classChoiceNew = switchAction + "Low";	
+		$(thisdiv).removeClass(classChoiceOld).addClass(classChoiceNew);
+	}
+	// Refresh all pin status without opening file
+	getPinStatusQuick()
+};
+
 // Handle PWM speed slider adjustments
 var speed = 0;
   $( function() {
@@ -113,82 +174,123 @@ var speed = 0;
     });
     $( "#amount" ).val( $( "#speed_div" ).slider( "value" ) );
   });
-//
 
-// Switch a PWM motor or LED (on/off, pin number, motor/LED)
-function switchPwmMotPin(action, swpin, pwmType) {
-	var pwmOn = "yes";
-	var mess = "TYPE: " + pwmType;
-	var switchCommand = "";
-	if (pwmType == 0) {
-		// Will be motor
-		switchAction = "switchMotor";
-		$('div#directionButtonsb').attr('style', 'display:block');
-		$('div#directionButtonsf').attr('style', 'display:block');
-		var switchCommand = activePwmPins[active_current_pin]["name"] + " " + action + " " + activePwmPins[active_current_pin]["direction"];
-	}
-	else {
-		// Will be LED
-		switchAction = "switchPWM";
-		$('div#directionButtonsb').attr('style', 'display:none');
-		$('div#directionButtonsf').attr('style', 'display:none');
-		switchCommand = switchCommand + active_current_pin.replace("gpio_", "") + " " + action;
-	}
-	$.post(commandPHP, {'commandsection':switchAction, 'command':switchCommand}, function(data) {
-		if (data == "Done") {
-			pwmOn = "yes";
-		}
-		else {
-			alert(data);
-		}
-	});
-	var pinDisplayName = "GPIO " + swpin + ": PWM output";
-	thisdiv = "div#pinid" + active_current_pin.replace("gpio_", "");
-	if (action == 1 && pwmOn == "yes") {
-		// Show PWM window with slider and reset status and speed
-		$('h2#speedHeading').text(pinDisplayName);
-		$('div#pin_holder').attr('style', 'display:none');
-		$('div#speed_display_div').attr('style', 'display:block');
-		allPins[active_current_pin]["status"] = "High"	
-		allPins[active_current_pin]["speed"] = allPins[active_current_pin]["default_speed"]	
-		// Determine class for pin status and change to class for new status
-		classChoiceOld = switchAction + "Low";		
-		classChoiceNew = switchAction + "High";	
-		$(thisdiv).removeClass(classChoiceOld).addClass(classChoiceNew);
-	}
-	else if (action == 0) {
-		// Hide PWM window and reset status and speed
-		$('div#pin_holder').attr('style', 'display:block');
-		$('div#speed_display_div').attr('style', 'display:none');
-		allPins[active_current_pin]["status"] = "Low";
-		allPins[active_current_pin]["speed"] = 0;	
-		$("#speed_div").slider("value", $("#speed_div").slider("option", "min") );
-		$( "#amount" ).val( $( "#speed_div" ).slider( "value" ) );
-		// Determine class for pin status and change to class for new status
-		classChoiceOld = switchAction + "High";		
-		classChoiceNew = switchAction + "Low";	
-		$(thisdiv).removeClass(classChoiceOld).addClass(classChoiceNew);
-	}
-	// Get all pin status without opening file
-	getPinStatusQuick()
-};
+//
 
 // Show the PWM div for the current pin
 function showSpeed() {
-	var pinDisplayName = current_pin + ": PWM output";
+	var pinDisplayName = active_current_pin + ": PWM output";
 	$('h2#speedHeading').text(pinDisplayName);
+	$( "#amount" ).val(activePwmPins[active_current_pin]["speed"]);
+	$( "#speed_div" ).slider( "value", activePwmPins[active_current_pin]["speed"] );
 	$('div#pin_holder').attr('style', 'display:none');
 	$('div#speed_display_div').attr('style', 'display:block');	
 };
+//
 
-// Toggle general divs
-function swapDiv(divnameOff, divnameOn) {
-	dOff = "div#" + divnameOff;
-	dOn = "div#" + divnameOn;
-	$(dOn).attr('style', 'display:block');
-	$(dOff).attr('style', 'display:none');
-	getPinStatusQuick()	
+
+///////////////// Handle stepper motors ///////
+// Position of slider from 0 to 360
+var stepperPos = 180;
+
+var stepperPosDisplay = stepperPos - 180;
+$( function() {
+    $( "#stepper_pos_div" ).slider({
+      orientation: "horizontal",
+      range: "min",
+      min: 0,
+      max: 360,
+      value: stepperPos,
+      slide: function( event, ui ) {
+		if (ui.value != stepperPos) {
+			stepperPos = ui.value;	
+    		$( "#stepamount" ).val( stepperPos - 180 );
+		}
+    }
+    });
+	//$( "#stepamount" ).val( stepperPos - 180 );
+});
+//
+
+function showStepper() {
+	stepHeading = active_current_pin + ": " + allPins[active_current_pin]["nickname"];
+	$('h2#stepperHeading').text(stepHeading);
+	if (allPins[active_current_pin]["action"]["pos"] <= 180) {
+		stepperPos = allPins[active_current_pin]["action"]["pos"] + 180;
+	}
+    else {
+		stepperPos = 180 - (360 - allPins[active_current_pin]["action"]["pos"]);
+	}
+	$( "#stepamount" ).val( stepperPos - 180 );
+	$('div#pin_holder').attr('style', 'display:none');
+	$('#stepper_display_div').attr('style', 'display:block');
 };
+
+function sendPosition () {
+	posMessage = allPins[active_current_pin]["nickname"] + " " + (stepperPos - 180);
+	$.post(commandPHP, {'commandsection':'stepperPos', 'command':posMessage});
+	console.log(posMessage);
+};
+
+function setZeroPosition() {
+	allPins[active_current_pin]["action"]["pos"] = 0;
+	stepperPos = 180;
+	motorName = allPins[active_current_pin]["nickname"];
+	posMessage = motorName + " " + active_current_pin;
+	$( "#stepamount" ).val( stepperPos - 180 );
+	$( "#stepper_pos_div" ).slider( "value", stepperPos );
+	$.post(commandPHP, {'commandsection':'stepper_zero', 'command':posMessage});
+};
+
+function centerMotor(pos) {	
+	if (pos == 1){
+		if (allPins[active_current_pin]["action"]["left_pos"] <= 180) {
+			stepperPos = allPins[active_current_pin]["action"]["left_pos"] + 180;
+		}
+    	else {
+			stepperPos = 180 - (360 - allPins[active_current_pin]["action"]["left_pos"]);
+		}
+		allPins[active_current_pin]["action"]["pos"] = allPins[active_current_pin]["action"]["left_pos"]
+	}
+	else if (pos == 2) {
+		if (allPins[active_current_pin]["action"]["default_pos"] <= 180) {
+			stepperPos = allPins[active_current_pin]["action"]["default_pos"] + 180;
+	
+		}
+    	else {
+			stepperPos = 180 - (360 - allPins[active_current_pin]["action"]["default_pos"]);
+		}
+		allPins[active_current_pin]["action"]["pos"] = allPins[active_current_pin]["action"]["default_pos"]
+	}
+	else if (pos == 3){
+		if (allPins[active_current_pin]["action"]["right_pos"] <= 180) {
+			stepperPos = allPins[active_current_pin]["action"]["right_pos"] + 180;
+		}
+    	else {
+			stepperPos = 180 - (360 - allPins[active_current_pin]["action"]["right_pos"]);
+		}
+		allPins[active_current_pin]["action"]["pos"] = allPins[active_current_pin]["action"]["right_pos"]
+	}
+	$( "#stepper_pos_div" ).slider( "value", stepperPos );
+	$( "#stepamount" ).val( stepperPos - 180 );
+};
+
+function setOscillate(onOff) {
+	console.log(onOff);
+	posMessage = allPins[current_pin]["nickname"] + " " + active_current_pin;
+	$.post(commandPHP, {'commandsection':'oscillate', 'command':posMessage});
+	if (onOff == 0) {
+		console.log("Stopping");
+		$('div#oscillate').attr('style', 'display:block');
+		$('div#directionButtonsf').attr('style', 'display:none');	
+		centerMotor(2);
+	}
+	else {
+		$('div#directionButtonsf').attr('style', 'display:block');	
+		$('div#oscillate').attr('style', 'display:none');
+	}		
+};
+
 
 // Switch a standard output pin (on/off, pin number)
 function switchPin(action, swpin) {
@@ -210,6 +312,16 @@ function switchPin(action, swpin) {
 	});
 };
 
+
+// Toggle general divs
+function swapDiv(divnameOff, divnameOn) {
+	dOff = "div#" + divnameOff;
+	dOn = "div#" + divnameOn;
+	$(dOn).attr('style', 'display:block');
+	$(dOff).attr('style', 'display:none');
+	getPinStatus()	
+};
+
 // Show the details div for the selected pin
 function showButtonDiv(divnumber) {
 	$('div.actiondiv').attr('style', 'display:none');
@@ -217,9 +329,10 @@ function showButtonDiv(divnumber) {
 	$(targetpindiv).attr('style', 'display:block');
 	previouspindiv = targetpindiv;
 	active_current_pin = activePins[divnumber];
+	console.log(active_current_pin);
 };
 
-// Create a quick-list of all set pins
+// Create a quick-list of any set pins
 function getActivePins() {
 	var xmlhttp = new XMLHttpRequest();
 	xmlhttp.onreadystatechange = function() {
@@ -251,7 +364,7 @@ function getActivePins() {
 
 
 function getArdPinStatus() {
-	// HTML to hold Arduino pin details and embed in aaimi_gpio_run.html
+	// Create HTML to hold active Arduino pin details and embed in aaimi_gpio_run.html
 	pageText = "";
 	for (ap = 0; ap < activePins.length; ap++) {
 		current_pin = activePins[ap];
@@ -267,6 +380,7 @@ function getArdPinStatus() {
 			current_pin_status = allPins[current_pin]["status"];	
 			// Set class for pin to apply status-specific CSS to pin div div	
 			pinclass = current_pin_setting + current_pin_status;
+			// Create main display div for pin and its details
 			pageText = pageText + "<div onclick='showButtonDiv(" + ap + ")' id='pinid" + pinNum + "' style='border-style:solid;border-radius:6px;' class='" + pinclass + "'><h2 type='button'>" + activePins[ap] + ": " + allPins[current_pin]['nickname'] + "</h2>";
 			pageText = pageText + "<p>" + current_pin_setting + "</p>";
 			if (current_pin_setting == "Analog") {
@@ -277,30 +391,36 @@ function getArdPinStatus() {
 				pageText = pageText + "<p>Count: " + allPins[current_pin]["action"]["arg1"] + "</p>";
 			}	
 			pageText = pageText + "<div class='actiondiv' id='pinactiondiv" + ap + "'>";
+			// Add On/Off buttons if Output
 			if (current_pin_setting == "Output") {
 				pageText = pageText + "<button onclick='switchPin(1, " + pinNum + ")' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 				pageText = pageText + "<button onclick='switchPin(0, " + pinNum + ")' type='button'>Off</button>";
 			}
 			else if (current_pin_setting == "PWMOutput") {   // Motor
+				// Add motor to list of existing motors
 				activePwmPins[current_pin] = {};
 				activePwmPins[current_pin]["name"] = allPins[current_pin]["nickname"];
 				activePwmPins[current_pin]["direction"] = allPins[current_pin]["action"]["arg3"];
 				activePwmPins[current_pin]["speed"] = 0;
 				activePwmPins[current_pin]["speed_default"] = allPins[current_pin]["action"]["arg2"];
+				// Add ChangeSpeed or On button depending on High/Low status
 				if (current_pin_status == "High") {
 					pageText = pageText + "<button onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change speed</button>";
 				}
 				else {
 					pageText = pageText + "<button onclick='switchPwmMotPin(1, " + pinNum + ", 0)' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 				}
+				// Add Off button
 				pageText = pageText + "<button onclick='switchPwmMotPin(0, " + pinNum + ", 0)' type='button'>Off</button>";
 			}
 			else if (current_pin_setting == "PWMOutputLed") {   // LED
+				// Add motor to list of existing motors
 				activePwmPins[current_pin] = {};
 				activePwmPins[current_pin]["name"] = allPins[current_pin]["nickname"];
 				activePwmPins[current_pin]["direction"] = "none";
 				activePwmPins[current_pin]["speed"] = allPins[current_pin]["action"]["arg1"];
 				activePwmPins[current_pin]["speed_default"] = allPins[current_pin]["action"]["arg2"];
+				// Add ChangeSpeed or On button depending on High/Low status
 				if (current_pin_status == "High") {
 					pageText = pageText + "<p>PWM speed: " + activePwmPins[current_pin]["speed"] + "</p>";
 					pageText = pageText + "<button id='speedPWM" + current_pin + "' onclick='showSpeed()' onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change speed</button>";
@@ -310,10 +430,13 @@ function getArdPinStatus() {
 				}
 				pageText = pageText + "<button onclick='switchPwmMotPin(0, " + pinNum + ", 1)' type='button'>Off</button>";
 			}
+			// Close div
 			pageText = pageText + "</div></div><br>";
 		}
 	}
+	// Load new HTML to page
 	$('div#ard_pin_holder').html(pageText);
+	// Re-display the pin div that was open before
 	$(previouspindiv).attr('style', 'display:block')
 	pageText = "";
 };
@@ -326,40 +449,48 @@ function getPinStatusQuick() {
 	for (ap = 0; ap < activePins.length; ap++) {
 		current_pin = activePins[ap];
 		if (current_pin.indexOf("gpio") != -1) {
+			// Get numeric identifier
 			pinNum = current_pin.replace("gpio_", "");
 			current_pin_setting = allPins[current_pin]["setting"];
-			current_pin_status = allPins[current_pin]["status"];		
+			current_pin_status = allPins[current_pin]["status"];
+			// Set pin class based on High/Low status		
 			pinclass = current_pin_setting + current_pin_status;
+			// Create main display div for pin and its details
 			pageText = pageText + "<div onclick='showButtonDiv(" + ap + ")' id='pinid" + current_pin.replace("gpio_", "") + "' style='border-style:solid;border-radius:6px;' class='" + pinclass + "'><h2 type='button'>" + activePins[ap] + ": " + allPins[current_pin]['nickname'] + "</h2>";
 			pageText = pageText + "<p>" + current_pin_setting + "</p><p>Action: " + allPins[current_pin]["action"]["type"] + "</p><p>Status: " + allPins[current_pin]["status"] + "</p>";
 			if (allPins[current_pin]["action"]["type"] == "countRecord") {
 				pageText = pageText + "<p>Count: " + allPins[current_pin]["action"]["arg1"] + "</p>";
 			}	
 			pageText = pageText + "<div class='actiondiv' id='pinactiondiv" + ap + "'>";
+			// If output, add On/Off buttons
 			if (current_pin_setting == "Output") {
 				pageText = pageText + "<button onclick='switchPin(1, " + current_pin.replace("gpio_", "") + ")' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 				pageText = pageText + "<button onclick='switchPin(0, " + current_pin.replace("gpio_", "") + ")' type='button'>Off</button>";
 			}
 			else if (current_pin_setting == "PWMOutput") {
-				activePwmPins[current_pin] = {};
+				// Add motor and details to list of exiting motors
 				activePwmPins[current_pin]["name"] = allPins[current_pin]["nickname"];
 				activePwmPins[current_pin]["direction"] = allPins[current_pin]["action"]["arg3"];
 				activePwmPins[current_pin]["speed"] = 0;
 				activePwmPins[current_pin]["speed_default"] = allPins[current_pin]["action"]["arg2"];
+				// Add ChangeSpeed or On button depending on High/Low status
 				if (current_pin_status == "High") {
 					pageText = pageText + "<button onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change speed</button>";
 				}
 				else {
 					pageText = pageText + "<button onclick='switchPwmMotPin(1, " + current_pin.replace("gpio_", "") + ", 0)' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 				}
+				// Create Off button
 				pageText = pageText + "<button onclick='switchPwmMotPin(0, " + current_pin.replace("gpio_", "") + ", 0)' type='button'>Off</button>";
 			}
 			else if (current_pin_setting == "PWMOutputLed") {
+				// Add motor and details to list of exiting motors
 				activePwmPins[current_pin] = {};
 				activePwmPins[current_pin]["name"] = allPins[current_pin]["nickname"];
 				activePwmPins[current_pin]["direction"] = "none";
 				activePwmPins[current_pin]["speed"] = allPins[current_pin]["action"]["arg1"];
 				activePwmPins[current_pin]["speed_default"] = allPins[current_pin]["action"]["arg2"];
+				// Add ChangeSpeed or On button depending on High/Low status
 				if (current_pin_status == "High") {
 					pageText = pageText + "<p>PWM speed: " + activePwmPins[current_pin]["speed"] + "</p>";
 					pageText = pageText + "<button id='speedPWM" + current_pin + "' onclick='showSpeed()' onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change speed</button>";
@@ -367,11 +498,14 @@ function getPinStatusQuick() {
 				else {
 					pageText = pageText + "<button id='startPWM" + current_pin + "' onclick='switchPwmMotPin(1, " + current_pin.replace("gpio_", "") + ", 1)' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 				}
+				// Create Off button
 				pageText = pageText + "<button onclick='switchPwmMotPin(0, " + current_pin.replace("gpio_", "") + ", 1)' type='button'>Off</button>";
 			}
+			// Close div
 			pageText = pageText + "</div></div><br>";
 		}
 	}
+	// Add HTML to page
 	$('div#pin_holder').html(pageText);
 	pageText = "";
 };
@@ -389,25 +523,44 @@ function getPinStatus() {
 	xmlhttp.send();
 	function pinFunction(pinlist) {
 		current_pin_map = pinlist[0].current_map;
-		// Load all details for use by other functions
+		// Load all details into array for use by other functions
 		for (var key in pinlist[0].maps[current_pin_map]) {
+			// General details
 			allPins[key] = {};
 			allPins[key]["setting"] = pinlist[0].maps[current_pin_map][key]["setting"];
 			allPins[key]["status"] = pinlist[0].maps[current_pin_map][key]["status"];
+			allPins[key]["nickname"] = pinlist[0].maps[current_pin_map][key]["nickname"];
 			allPins[key]["action"] = {};
 			allPins[key]["action"]["type"] = pinlist[0].maps[current_pin_map][key]["action"]["type"];
 			allPins[key]["action"]["arg1"] = pinlist[0].maps[current_pin_map][key]["action"]["arg1"];
 			allPins[key]["action"]["arg2"] = pinlist[0].maps[current_pin_map][key]["action"]["arg2"];
-			if (allPins[key]["setting"] == "Analog" || allPins[key]["setting"] == "PWMOutput") {
+			// Pin type-specific details
+			if (allPins[key]["setting"] == "Analog") {
+				// Analog trigger point
 				allPins[key]["action"]["arg3"] = pinlist[0].maps[current_pin_map][key]["action"]["arg3"];
 			}
-			allPins[key]["nickname"] = pinlist[0].maps[current_pin_map][key]["nickname"];
+			else if (allPins[key]["setting"] == "Stepper") {
+				allPins[key]["action"]["arg3"] = pinlist[0].maps[current_pin_map][key]["action"]["arg3"]; // fourth stepper pin
+				allPins[key]["action"]["default_speed"] = pinlist[0].maps[current_pin_map][key]["action"]["default_speed"];
+				allPins[key]["action"]["speed"] = pinlist[0].maps[current_pin_map][key]["action"]["speed"];
+				allPins[key]["action"]["default_pos"] = pinlist[0].maps[current_pin_map][key]["action"]["default_pos"];
+				allPins[key]["action"]["pos"] = pinlist[0].maps[current_pin_map][key]["action"]["pos"];
+				allPins[key]["action"]["left_pos"] = pinlist[0].maps[current_pin_map][key]["action"]["left_pos"];
+				allPins[key]["action"]["right_pos"] = pinlist[0].maps[current_pin_map][key]["action"]["right_pos"];
+				allPins[key]["action"]["adjuster"] = pinlist[0].maps[current_pin_map][key]["action"]["adjuster"];
+				allPins[key]["action"]["rotation_type"] = pinlist[0].maps[current_pin_map][key]["action"]["rotation_type"];
+			}
 		}
+		console.log(active_current_pin);
+		// Build HTML with pin details
 		for (ap = 0; ap < activePins.length; ap++) {
 			current_pin = activePins[ap];
+			// Exclude Arduino pins
 			if (current_pin.indexOf("gpio") != -1) {
+				// General settings for pin
 				current_pin_setting = pinlist[0].maps[current_pin_map][current_pin]["setting"];
-				current_pin_status = pinlist[0].maps[current_pin_map][current_pin]["status"];			
+				current_pin_status = pinlist[0].maps[current_pin_map][current_pin]["status"];	
+				// Change class based on High/Low status		
 				pinclass = current_pin_setting + current_pin_status;
 
 				// Created div with details for this pin. If output, add buttons to switch on and off
@@ -422,26 +575,35 @@ function getPinStatus() {
 					pageText = pageText + "<button onclick='switchPin(1, " + current_pin.replace("gpio_", "") + ")' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 					pageText = pageText + "<button onclick='switchPin(0, " + current_pin.replace("gpio_", "") + ")' type='button'>Off</button>";
 				}
+				else if (current_pin_setting == "Stepper") {
+					pageText = pageText + "<button onclick='showStepper()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change</button>";
+					
+				}
+				// If PWM motor, add details to PWM list
 				else if (current_pin_setting == "PWMOutput") {
 					activePwmPins[current_pin] = {};
 					activePwmPins[current_pin]["name"] = pinlist[0].maps[current_pin_map][current_pin]["nickname"];
 					activePwmPins[current_pin]["direction"] = pinlist[0].maps[current_pin_map][current_pin]["action"]["arg3"];
 					activePwmPins[current_pin]["speed"] = 0;
 					activePwmPins[current_pin]["speed_default"] = pinlist[0].maps[current_pin_map][current_pin]["action"]["arg2"];
+					// Add ChangeSpeed or On buttons based on High/Low status
 					if (current_pin_status == "High") {
 						pageText = pageText + "<button onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change speed</button>";
 					}
 					else {
 						pageText = pageText + "<button onclick='switchPwmMotPin(1, " + current_pin.replace("gpio_", "") + ", 0)' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 					}
+					// Add off button
 					pageText = pageText + "<button onclick='switchPwmMotPin(0, " + current_pin.replace("gpio_", "") + ", 0)' type='button'>Off</button>";
 				}
+				// If single-pin PWM output, add details to PWM list
 				else if (current_pin_setting == "PWMOutputLed") {
 					activePwmPins[current_pin] = {};
 					activePwmPins[current_pin]["name"] = pinlist[0].maps[current_pin_map][current_pin]["nickname"];
 					activePwmPins[current_pin]["direction"] = "none";
 					activePwmPins[current_pin]["speed"] = pinlist[0].maps[current_pin_map][current_pin]["action"]["arg1"];
 					activePwmPins[current_pin]["speed_default"] = pinlist[0].maps[current_pin_map][current_pin]["action"]["arg2"];
+					// Add ChangeSpeed or On buttons based on High/Low status
 					if (current_pin_status == "High") {
 						pageText = pageText + "<p>PWM speed: " + activePwmPins[current_pin]["speed"] + "</p>";
 						pageText = pageText + "<button id='startPWM" + current_pin + "' onclick='switchPwmMotPin(1, " + current_pin.replace("gpio_", "") + ", 1)' style='background-color:LightGreen;margin-bottom:20px;display:none' type='button'>On</button>";
@@ -451,6 +613,7 @@ function getPinStatus() {
 						pageText = pageText + "<button id='startPWM" + current_pin + "' onclick='switchPwmMotPin(1, " + current_pin.replace("gpio_", "") + ", 1)' style='background-color:LightGreen;margin-bottom:20px' type='button'>On</button>";
 						pageText = pageText + "<button id='speedPWM" + current_pin + "' onclick='showSpeed()' style='background-color:LightGreen;margin-bottom:20px;display:none' type='button'>Change speed</button>"
 					}
+					// Add off button
 					pageText = pageText + "<button onclick='switchPwmMotPin(0, " + current_pin.replace("gpio_", "") + ", 1)' type='button'>Off</button>";
 				}
 				pageText = pageText + "</div></div><br>";
@@ -462,6 +625,7 @@ function getPinStatus() {
 			$(previouspindiv).attr('style', 'display:block')
 			oldPageText = pageText;
 		}
+		// Load Arduino HTML
 		getArdPinStatus()
 		pageText = "";
 };

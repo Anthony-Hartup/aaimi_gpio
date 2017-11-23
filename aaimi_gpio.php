@@ -23,7 +23,7 @@ if(!($sock = socket_create(AF_INET, SOCK_STREAM, 0))) {
     die("Couldn't create socket: [$errorcode] $errormsg \n");
 	$return_message = "Could not create";
 }
-if(!socket_connect($sock , '127.0.0.1' , 50001)) {
+if(!socket_connect($sock , '127.0.0.5' , 50001)) {
     $errorcode = socket_last_error();
     $errormsg = socket_strerror($errorcode);     
     die("Could not connect: [$errorcode] $errormsg \n");

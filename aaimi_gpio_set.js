@@ -1,4 +1,5 @@
 // Pin configuration page for AAIMI GPIO
+
 // Flags to monitor which divs are shown/hidden
 var screenState = "set";
 var previousScreenState = "set";
@@ -48,7 +49,7 @@ function openCloseOptions() {
 		$('div#mapOptions').attr('style', 'display:none');
 		$('div#savediv').attr('style', 'display:none');
 		previousScreenState = screenState;
-		screenState = "OpenClose"	
+		screenState = "OpenClose";
 	}
 	else {
 		$('div#openCloseOptions').attr('style', 'display:none');	
@@ -70,7 +71,7 @@ function mapOptions() {
 		$('div#resetDiv').attr('style', 'display:none');
 		$('div#savediv').attr('style', 'display:none');
 		previousScreenState = screenState;
-		screenState = "maps"	
+		screenState = "maps";	
 	}
 	else {
 		$('div#mapOptions').attr('style', 'display:none');	
@@ -83,7 +84,7 @@ function changeCurrentMap(mapnum) {
 	$.post("aaimi_gpio.php", {'commandsection':'choose_map', 'command':current_pin_map}, function(data) {
 	alert(data);
 	});
-	getAllPins()
+	getAllPins();
 };
 
 // Display option to reset main pin map
@@ -93,14 +94,16 @@ function showSaveDiv() {
 		$('div#savediv').attr('style', 'display:block');
 		$('div#resetDiv').attr('style', 'display:none');
 		if (pinmaps > 1) {
+			// Display buttons of all save maps
 			var savetxt = "<h2>Saved Maps</h2>";
 			for (m = 0; m < savedMaps.length; m++) {
-			savetxt = savetxt + "<button style='background-color:green;font-size:1em;margin-bottom:20px;' onclick='changeCurrentMap(" + m + ")'>" + savedMaps[m] + "</button><br>";				
+				savetxt = savetxt + "<button style='background-color:green;font-size:1em;margin-bottom:20px;' onclick='changeCurrentMap(" + m + ")'>" + savedMaps[m] + "</button><br>";				
 			}
 		}
 		else{
 			var savetxt = "<h2 style='color:blue'>You have no saved pin maps</h2>";
 		}
+		// Display button to save current map
 		savetxt = savetxt + "<button style='font-size:1.3em;margin-bottom:20px;background-color:darkBlue;color:white;' onclick='saveCurrentMap()'>Save current map</button>";
 		
 		$('div#savediv').html(savetxt);
@@ -129,16 +132,18 @@ function saveCurrentMap() {
 	$('div#saveformdiv').attr('style', 'display:block');
 };
 
-// Display option to reset main pin map
+// Display or hide option to reset main pin map
 function resetOptions() {
 	if (screenState != "reset") {
+		// Display option
 		$('div#resetDiv').attr('style', 'display:block');
 		$('div#openCloseOptions').attr('style', 'display:none');
 		$('div#savediv').attr('style', 'display:none');
 		previousScreenState = screenState;
-		screenState = "reset"	
+		screenState = "reset";	
 	}
 	else {
+		// Hide option
 		$('div#resetOptions').attr('style', 'display:none');	
 		screenState = previousScreenState;
 	}
@@ -169,10 +174,10 @@ $('.pinform').submit(function(event) {
 				pin_namet = $uform.find( "input[name='nickname']" ).val(),
     			pin_typet = $uform.find( "select[name='pintype']" ).val();
 		}
-		// Arduino will automatically apply allowed pin type settings for pin
-		// D11 and D12 can only be inputs, all other digitals can only be outputs
-		// Ananlog pins can only be analog input
 		else {
+			// Arduino will automatically apply allowed pin type settings for pin
+			// D11 and D12 can only be inputs, all other digitals can only be outputs
+			// Ananlog pins can only be analog input
 			var $uform = $( this ),
 				pin_namet = $uform.find( "input[name='nickname']" ).val();
 			if (current_pin == "D11" || current_pin == "D12") {
@@ -185,7 +190,6 @@ $('.pinform').submit(function(event) {
 				pin_typet = "Output";
 			}
 			console.log(current_pin);
-			console.log(pin_typet);
 		}
 	// keep pin name and settings for following form
     current_pin_name = pin_namet;
@@ -220,14 +224,23 @@ $('.pinform').submit(function(event) {
 		if (current_pintype == "PWMOutputLed") {
 			$('section#pwmSection').attr('style', 'display:block');
 			$('p#pwmMotSpeedId').attr('style', 'display:none');
+			$('section#stepperSection').attr('style', 'display:none');
 		}
 		else if (current_pintype == "PWMOutput") {
 			$('section#pwmSection').attr('style', 'display:block');
-			$('p#pwmMotorSpeedId').attr('style', 'display:block')
+			$('p#pwmMotorSpeedId').attr('style', 'display:block');
+			$('section#stepperSection').attr('style', 'display:none');
 		}
 	}
-	else {
-		console.log(current_pintype);
+	else if (current_pintype == "Stepper") {
+		var inputOutputTextHeading = "<h2>" + current_pin + "</h2><h2>" + current_pin_name + ": " + current_pintype + "</h2>";
+		$('form.outpinform').attr('style', 'display:block');
+		$('form.pinform').attr('style', 'display:none');
+		$('form.inpinform').attr('style', 'display:none');
+		$('div#tempFormHeading').attr('style', 'display:block');
+		$('div#tempFormHeading').html(inputOutputTextHeading);
+		$('section#outputSection').attr('style', 'display:block');
+		$('section#stepperSection').attr('style', 'display:block');
 	}
 });
 
@@ -240,6 +253,13 @@ $('.inpinform').submit(function(event) {
 	    	pinhilo = $uform.find( "select[name='highOrLowChange']" ).val(), // default: high or low
 			pinAction = $uform.find( "select[name='pinActions']" ).val(),  // How to react to event
 			inOutPin = $uform.find( "input[name='inOutPin']" ).val(),  // output to switch on input event
+			emailhead = $uform.find( "input[name='email_heading']" ).val(),
+			httpkey1 = $uform.find( "input[name='websiteKey1']" ).val(),
+			httpval1 = $uform.find( "select[name='webArg1']" ).val(),
+			httpValueCustom1 = $uform.find( "input[name='customValue1']" ).val(),
+			httpkey2 = $uform.find( "input[name='websiteKey2']" ).val(),
+			httpval2 = $uform.find( "select[name='webArg2']" ).val(),
+			httpValueCustom2 = $uform.find( "input[name='customValue2']" ).val(),
 			inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),  // Indicates action works on timer
 			inOutTimeS = $uform.find( "input[name='inOutTimeS']" ).val(),   // Starting time
 			inOutTimeE = $uform.find( "input[name='inOutTimeE']" ).val(),   // Ending time
@@ -253,7 +273,14 @@ $('.inpinform').submit(function(event) {
 			pinAction = $uform.find( "select[name='pinActions']" ).val(),
 			inOutPin = $uform.find( "input[name='inOutPin']" ).val(),
 			triggerPoint = $uform.find( "input[name='trigger']" ).val(),   // Analog trigger point
+			emailhead = $uform.find( "input[name='email_heading']" ).val(),
 			inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),
+			httpkey1 = $uform.find( "input[name='websiteKey1']" ).val(),
+			httpval1 = $uform.find( "select[name='webArg1']" ).val(),
+			httpValueCustom1 = $uform.find( "input[name='customValue1']" ).val(),
+			httpkey2 = $uform.find( "input[name='websiteKey2']" ).val(),
+			httpval2 = $uform.find( "select[name='webArg2']" ).val(),
+			httpValueCustom2 = $uform.find( "input[name='customValue2']" ).val(),
 			inOutTimeS = $uform.find( "input[name='inOutTimeS']" ).val(),
 			inOutTimeE = $uform.find( "input[name='inOutTimeE']" ).val(),
 			keepOn = $uform.find( "select[name='keepOn']" ).val(),
@@ -300,9 +327,35 @@ $('.inpinform').submit(function(event) {
 		pimessage = pimessage + " " + pinAction + " 0 0";
 		pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + keepOnTime;
 	}
+	else if (pinAction == "sendEmail") {
+		pimessage = pimessage + " " + pinAction + " " + emailhead + " 0";
+		pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + keepOnTime;
+	}
+
+
+	else if (pinAction == "sendWebRequest") {
+		if (httpval1 != "custom1") { // Use default, val will be pin name
+			firstValue = httpval1;
+		}
+		else {
+			firstValue = httpValueCustom1;  // User's custom first value
+		}
+
+		if (httpval2 != "custom2") { // Use default, val will be pin name
+			secondValue = httpval2;
+		}
+		else {
+			secondValue = httpValueCustom2; // User's custom first value
+		}
+		pimessage = pimessage + " " + pinAction + " 0 0 ";
+		pimessage = pimessage + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + keepOnTime;
+		pimessage = pimessage + " " + httpkey1 + " " + firstValue + " " + httpkey2 + " " + secondValue;
+	}
+
+
 	// Add analog trigger point if Arduino
 	if (current_pin.indexOf("gpio") == -1) {
-		pimessage = pimessage + " " + triggerPoint
+		pimessage = pimessage + " " + triggerPoint;
 	}
 	// Replace form with pin overview
 	$('form.inpinform').attr('style', 'display:none');
@@ -320,34 +373,68 @@ $('.inpinform').submit(function(event) {
 $('.outpinform').submit(function(event) {
 	event.preventDefault();
 	var usercomm = "changeGPIOtype";
-    var $uform = $( this ),
-    	pinhilo = $uform.find( "select[name='outHighOrLowdefault']" ).val(), // default: high or low
-		pinAction = $uform.find( "select[name='outPinActions']" ).val(),  // How to control the output
-		arg1 =  $uform.find( "input[name='motorPair']" ).val(),  // Second pin for motor
-		arg2 =  $uform.find( "input[name='motorSpeed']" ).val(),   // Default motor speed
-		keepOn = $uform.find( "select[name='keepOnOut']" ).val(),  // Indicates output works on timeout
-		timeout = $uform.find( "input[name='keepOnTimeOut']" ).val(), // Timeout in seconds
-		inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),  // Indicates output works on timer
-		inOutTimeS = $uform.find( "input[name='inOutTimeS']" ).val(),  // Start time
-		inOutTimeE = $uform.find( "input[name='inOutTimeE']" ).val();  // End time
-	// Create message for Python
-	var pimessage = current_pin_map + " " + current_pin + " " + current_pintype + " " + current_pin_name + " " + pinhilo + " " + pinAction;
-	// If pin is for motor, add pair pin and default motor speed
-	if (current_pintype == "PWMOutput") {
-		pimessage = pimessage + " " + arg1 + " " + arg2;
+	if (current_pintype == "Stepper") { // Stepper motor
+		var $uform = $( this ),
+	    	pinhilo = $uform.find( "select[name='outHighOrLowdefault']" ).val(), // default: high or low
+			pinAction = $uform.find( "select[name='outPinActions']" ).val(),  // How to control the output
+			arg1 = $uform.find( "input[name='secondPin']" ).val(),  // Second pin for motor
+			arg2 = $uform.find( "input[name='thirdPin']" ).val(),
+			arg3 = $uform.find( "input[name='fourthPin']" ).val(),
+			keepOn = $uform.find( "select[name='keepOnOut']" ).val(),  // Indicates output works on timeout
+			timeout = $uform.find( "input[name='keepOnTimeOut']" ).val(), // Timeout in seconds
+			inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),  // Indicates output works on timer
+			inOutTimeS = $uform.find( "input[name='inOutTimeS']" ).val(),  // Start time
+			inOutTimeE = $uform.find( "input[name='inOutTimeE']" ).val(),  // End time
+			rotation_type = $uform.find( "select[name='rotationType']" ).val(),
+			step_pos = $uform.find( "input[name='stepPosition']" ).val(), // Default position for stepper motor
+			adjuster = $uform.find( "input[name='adjuster']" ).val(),  // Steps to degree ratio
+			lpos = $uform.find( "input[name='leftPosition']" ).val(),  // Left stop for oscillation and quick set
+			rpos = $uform.find( "input[name='rightPosition']" ).val(),  // Right stop for oscillation and quick set
+			step_speed = $uform.find( "input[name='stepMotorSpeed']" ).val();  // Default motor speed
+			//stepspeed = toString(step_speed);
 	}
-	// If pin is for PWM LED, add filler then LED brightness (arg2)
-	else if (current_pintype == "PWMOutputLed") {
-		pimessage = pimessage + " 0 " + arg2;
-	}
-	// If standard output, just add fillers
 	else {
-		pimessage = pimessage + " 0 0";
+		// All other pin types
+    	var $uform = $( this ),
+	    	pinhilo = $uform.find( "select[name='outHighOrLowdefault']" ).val(), // default: high or low
+			pinAction = $uform.find( "select[name='outPinActions']" ).val(),  // How to control the output
+			arg1 = $uform.find( "input[name='motorPair']" ).val(),  // Second pin for motor
+			arg2 = $uform.find( "input[name='motorSpeed']" ).val(),   // Default motor speed
+			keepOn = $uform.find( "select[name='keepOnOut']" ).val(),  // Indicates output works on timeout
+			timeout = $uform.find( "input[name='keepOnTimeOut']" ).val(), // Timeout in seconds
+			inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),  // Indicates output works on timer
+			inOutTimeS = $uform.find( "input[name='inOutTimeS']" ).val(),  // Start time
+			inOutTimeE = $uform.find( "input[name='inOutTimeE']" ).val();  // End time
 	}
-	pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + timeout;
+	// Create initial message for Python with general details
+	var pimessage = current_pin_map + " " + current_pin + " " + current_pintype + " " + current_pin_name + " " + pinhilo + " " + pinAction;
+
+	// Add pin-type-specific details to message
+	// Stepper motor
+	if ( current_pintype == "Stepper") {
+		pimessage = pimessage + " " + arg1 + " " + arg2;
+		pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + timeout + " ";
+		pimessage = pimessage + arg3 + " " + step_speed + " " + step_pos + " " + rotation_type + " " + adjuster + " " + lpos + " " + rpos;
+	}
+	// Other outputs
+	else {
+		// If pin is for motor, add pair pin and default motor speed
+		if (current_pintype == "PWMOutput") {
+			pimessage = pimessage + " " + arg1 + " " + arg2;
+		}
+		// If pin is for PWM LED, add filler then LED brightness (arg2)
+		else if (current_pintype == "PWMOutputLed") {
+			pimessage = pimessage + " 0 " + arg2;
+		}
+		// If standard output, just add fillers
+		else {
+			pimessage = pimessage + " 0 0";
+		}
+		pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + timeout;
+	}
 	// Create HTML to display new settings to user
 	var inputOutputText = "<h2>" + current_pin + "</h2><h2>" + current_pin_name + ": " + current_pintype + "</h2><p>Defualt: " + pinhilo + "</p>";
-	if (pinAction == "outManual" || pinAction == "outOnInput") { 		
+	if (pinAction == "outManual" || pinAction == "outOnInput" || pinAction == "Ste") { 		
 		inputOutputText = inputOutputText + "<p>" + pinAction + "</p>";
 	}
 	// Timer options
@@ -369,15 +456,61 @@ $('.outpinform').submit(function(event) {
 	alert(pimessage);
 });
 
-/////////////  FUNCTIONS  ///////////////////
+/////////////  Communications  ///////////////////
 
-// Show a div and optionally hide another
-function showDiv(divToShow, divToHide) {
-	var divText = "div#" + divToShow;
-	$(divText).attr('style', 'display:block');
+// Get password for system email account
+$('#emailform').submit(function(event) {
+	event.preventDefault();
+	var $uform = $( this ),
+		system_email = $uform.find( "input[name='emailInput']" ).val();	
+	$.post(commandPHP, {'commandsection':'emailPass', 'command':system_email}, function(data) {
+		alert(data);
+	});	
+	$('div#emailDiv').attr('style', 'display:none');
+	$('button#emailButtonOff').attr('style', 'display:none');		
+});
+
+// Get password for website for HTTPS requests
+$('#websiteform').submit(function(event) {
+	event.preventDefault();
+	var $uform = $( this ),
+		websitePass = $uform.find( "input[name='websiteInput']" ).val();	
+	$.post(commandPHP, {'commandsection':'websitePass', 'command':websitePass}, function(data) {
+		alert(data);
+	});	
+	$('div#websiteDiv').attr('style', 'display:none');	
+	$('button#websiteButtonOff').attr('style', 'display:none');	
+});
+
+///////// Page layout  /////////////
+// Show a div and optionally hide another and manage their buttons
+function showDiv(divToShow, divToHide, buttonToShow, buttonToHide) {
+	if (divToShow != "none") {
+		var divText = "div#" + divToShow;
+		$(divText).attr('style', 'display:block');
+	}
 	if (divToHide != "none") {
 	divText = "div#" + divToHide;
 	$(divText).attr('style', 'display:none');
+	}
+	if (buttonToShow != "none") {
+		var buttonText = "button#" + buttonToShow;
+		$(buttonText).attr('style', 'display:block');
+	}
+	if (buttonToHide != "none") {
+		buttonText = "button#" + buttonToHide;
+		$(buttonText).attr('style', 'display:none');
+	}
+};
+
+// Show one button and (optionally) hide another
+function showButton(butToShow, butToHide) {
+	console.log(butToShow);
+	var butText = "button#" + butToShow;
+	$(butText).attr('style', 'display:block');
+	if (butToHide != "none") {
+		butText = "div#" + butToHide;
+		$(butText).attr('style', 'display:none');
 	}
 }
 
@@ -402,66 +535,84 @@ function showHideFields(field, label, show, button) {
 	}
 };
 
+// Create different dialog to suit the pin's default state
 function changeHighLow(selectId) {
-var selectfield = document.getElementById(selectId);
-var selectedValue = selectfield.options[selectfield.selectedIndex].value;
-if (selectedValue == "High" || selectedValue == "Low") {
-	var highLowText = "Choose what happens when this pin goes " + selectedValue + ".";
-	$('p#hilo').html(highLowText);
-}
+	var selectfield = document.getElementById(selectId);
+	var selectedValue = selectfield.options[selectfield.selectedIndex].value;
+	if (selectedValue == "High" || selectedValue == "Low") {
+		var highLowText = "Choose what happens when this pin goes " + selectedValue + ".";
+		$('p#hilo').html(highLowText);
+	}
 };
 
 // Add and remove form options and fields based on a select box choice
 function changeFormFields(targetId) {
-var selectBox = document.getElementById(targetId);
-var selectedValue = selectBox.options[selectBox.selectedIndex].value;
-if (selectedValue.indexOf("Input") != -1) {
-	$('section#inputSection').attr('style', 'display:block');
-}
-else if (selectedValue == "switchOut" || selectedValue == "switchOutoff") {
-	$('section#inputActionSection').attr('style', 'display:block');
-	$('section#submitInput').attr('style', 'display:block');
-}
-else if (selectedValue == "Analog") {
-	console.log("AN");
-	$('.trig').attr('style', 'display:block');
-	$('p#defaultDialogue').html('React when pin goes Higher or Lower your trigger point?');
-}
-else if (selectedValue == "setTimes") {
-	$('input#inOutTimeInpStart').attr('style', 'display:block');
-	$('input#inOutTimeInpEnd').attr('style', 'display:block');	
-}
-else if (selectedValue == "timeout" || selectedValue == "timeoutEvent") {
-	$('input#timeoutId').attr('style', 'display:block');
-}
-else if (selectedValue == "outOnInput") {
-	console.log("OnINPUT");
-	$('section#submitOutput').attr('style', 'display:block');
-	$('p#inPutMessage').attr('style', 'display:block');
-}
-else if (selectedValue == "outTimer") {
-	$('section#outputTimerSection').attr('style', 'display:block');
-	$('section#submitOutput').attr('style', 'display:block');
-}
-else if (selectedValue == "outTimed") {
-	$('section#outputTimedSection').attr('style', 'display:block');
-	$('section#submitOutput').attr('style', 'display:block');
-	$('input#timeoutIdOut').attr('style', 'display:block');
-}
-else if (selectedValue == "outManual") {
-	$('section#submitOutput').attr('style', 'display:block');
-}
-else if (selectedValue == "countRecord") {
-	$('section#submitInput').attr('style', 'display:block');
-	$('p#inPutMessage').attr('style', 'display:block');
-}
-// Arduino
-else if (selectedValue == "ajustPWM") {
-	$('.inOutPWMSpeed').attr('style', 'display:block');
-}
-if (targetId == "pinActionSelect" || targetId == "ardPinActionSelect") {
-	$('section#submitOutput').attr('style', 'display:block');
-}
+	var selectBox = document.getElementById(targetId);
+	var selectedValue = selectBox.options[selectBox.selectedIndex].value;
+	if (selectedValue.indexOf("Input") != -1) {
+		$('section#inputSection').attr('style', 'display:block');
+	}
+	else if (selectedValue == "switchOut" || selectedValue == "switchOutoff") {
+		$('section#inputActionSection').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "Analog") {
+		console.log("AN");
+		$('.trig').attr('style', 'display:block');
+		$('p#defaultDialogue').html('React when pin goes Higher or Lower your trigger point?');
+	}
+	else if (selectedValue == "setTimes") {
+		$('input#inOutTimeInpStart').attr('style', 'display:block');
+		$('input#inOutTimeInpEnd').attr('style', 'display:block');	
+	}
+	else if (selectedValue == "timeout" || selectedValue == "timeoutEvent") {
+		$('input#timeoutId').attr('style', 'display:block');
+	}
+	else if (selectedValue == "outOnInput") {
+		console.log("OnINPUT");
+		$('section#submitOutput').attr('style', 'display:block');
+		$('p#inPutMessage').attr('style', 'display:block');
+	}
+	else if (selectedValue == "outTimer") {
+		$('section#outputTimerSection').attr('style', 'display:block');
+		$('section#submitOutput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "outTimed") {
+		$('section#outputTimedSection').attr('style', 'display:block');
+		$('section#submitOutput').attr('style', 'display:block');
+		$('input#timeoutIdOut').attr('style', 'display:block');
+	}
+	else if (selectedValue == "outManual") {
+		$('section#submitOutput').attr('style', 'display:block');
+
+	}
+	else if (selectedValue == "countRecord") {
+		$('section#submitInput').attr('style', 'display:block');
+		$('p#inPutMessage').attr('style', 'display:block');
+	}
+	else if (selectedValue == "sendEmail") {
+		$('section#emailSection').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "sendWebRequest") {
+		$('section#websiteSection').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "custom1") {
+		$('section#value1').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "custom2") {
+		$('section#value2').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	// Arduino
+	else if (selectedValue == "ajustPWM") {
+		$('.inOutPWMSpeed').attr('style', 'display:block');
+	}
+	if (targetId == "pinActionSelect" || targetId == "ardPinActionSelect") {
+		$('section#submitOutput').attr('style', 'display:block');
+	}
 };
 
 // Load the initial pin configuration form
@@ -523,7 +674,7 @@ function showArdDetails(identifier) {
 		thisDiv = "5V";
 	}
 	else {
-		show = "no"
+		show = "no";
 	}
 	if (show == "yes") {
 	current_pin = thisDiv;
@@ -728,7 +879,7 @@ function getArduinoPins() {
 			// Save details for left-hand button while creating right-hand button
 			previousPin = thisPin;
 		}
-	}
+}
 // Load the HTML into the main arduino div
 $('div#ard_pin_set_holder').html(pageSetText);
 pageSetText = "";
@@ -749,16 +900,17 @@ function getAllPins() {
 
 	function pinFunction(pinlist) {
 	    previousPin = "";
-		pinmaps = Object.keys(pinlist[0].maps).length
+		pinmaps = Object.keys(pinlist[0].maps).length;
 		for (var key in pinlist[0].maps) {
 			savedMaps.push(key);
 		}
 		current_pin_map = pinlist[0].current_map;
 		maptext = "Current map: " + pinlist[0].current_map;
 		$('h2#mapName').text(maptext);
-		// Store contents of file to use again without another file read
+		// Store contents of file to use again for other functions
 		for (var key in pinlist[0].maps[current_pin_map]) {
 			allPins[key] = {};
+			// General pin details
 			allPins[key]["setting"] = pinlist[0].maps[current_pin_map][key]["setting"];
 			allPins[key]["status"] = pinlist[0].maps[current_pin_map][key]["status"];
 			allPins[key]["default"] = pinlist[0].maps[current_pin_map][key]["default"];
@@ -768,10 +920,20 @@ function getAllPins() {
 			allPins[key]["action"]["arg2"] = pinlist[0].maps[current_pin_map][key]["action"]["arg2"];
 			allPins[key]["action"]["timeout_type"] = pinlist[0].maps[current_pin_map][key]["action"]["timeout_type"];
 			allPins[key]["action"]["timeout"] = pinlist[0].maps[current_pin_map][key]["action"]["timeout"];
+			allPins[key]["nickname"] = pinlist[0].maps[current_pin_map][key]["nickname"];
+			// Pin-typ-specific details
 			if (pinlist[0].maps[current_pin_map][key]["setting"] == "Analog") {
 				allPins[key]["action"]["arg3"] = pinlist[0].maps[current_pin_map][key]["action"]["arg3"];
 			}
-			allPins[key]["nickname"] = pinlist[0].maps[current_pin_map][key]["nickname"];
+			else if (pinlist[0].maps[current_pin_map][key]["setting"] == "Stepper") {
+				allPins[key]["action"]["arg3"] = pinlist[0].maps[current_pin_map][key]["action"]["arg3"];
+				allPins[key]["action"]["default_speed"] = pinlist[0].maps[current_pin_map][key]["action"]["default_speed"];
+				allPins[key]["action"]["speed"] = pinlist[0].maps[current_pin_map][key]["action"]["speed"];
+				allPins[key]["action"]["default_pos"] = pinlist[0].maps[current_pin_map][key]["action"]["default_pos"];
+				allPins[key]["action"]["pos"] = pinlist[0].maps[current_pin_map][key]["action"]["pos"];
+				allPins[key]["action"]["rotation_type"] = pinlist[0].maps[current_pin_map][key]["action"]["rotation_type"];
+				allPins[key]["action"]["adjuster"] = pinlist[0].maps[current_pin_map][key]["action"]["adjuster"];
+			}			
 		}
 		// Create HTML for Raspi pins
 		pageSetText = pageSetText + "<h2 style='color:white'>Raspberry Pi</h2>";
@@ -783,8 +945,11 @@ function getAllPins() {
 
 				// Check that pin is GPIO rather than power or GND
 				if (thisPin.indexOf("gpio") != -1) {
-					var thisPinSetting = pinlist[0].maps[current_pin_map][thisPin]["setting"]
-					var thisPinState = pinlist[0].maps[current_pin_map][thisPin]["status"]
+					var thisPinSetting = pinlist[0].maps[current_pin_map][thisPin]["setting"];
+					var thisPinState = pinlist[0].maps[current_pin_map][thisPin]["status"];
+
+					// Create button for pin
+					// Pins work in left-right pairs, check if pin is first or second of pair
 					if (pb % 2 != 0) {						
 						/// New pair, create holder and start left-hand pin
 						pageSetText = pageSetText + "<div class='pinpair'><div class='pi_pin' id='" + thisPin;
@@ -796,6 +961,7 @@ function getAllPins() {
 						pageSetText = pageSetText + "'><button class='pi_right' id='" + thisPin + "button'";
 					}
 						pageSetText = pageSetText + " type='button' onclick='showPinDetails(" + pinIndex + ")' style='background-color:";
+
 					// Set color for pin button according to input/output type
 					if (pinlist[0].maps[current_pin_map][thisPin]["setting"] == "Unset" && pinlist[0].maps[current_pin_map][thisPin]["action"]["type"] != "OutputPartner") {
 						buttoncol = "goldenrod";
@@ -806,9 +972,13 @@ function getAllPins() {
 					else if (pinlist[0].maps[current_pin_map][thisPin]["setting"].indexOf("Output") != -1) {
 						buttoncol = "LightGreen";
 					}
-					else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["type"] != "OutputPartner") {
+					else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["setting"] != "OutputPartner") {
+						buttoncol = "GreenYellow";
+					}
+					else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["setting"] != "Stepper") {
 						buttoncol = "LightGreen";
 					}
+
 					// Prepend pin nickname to gpio number if set
 					if (pinlist[0].maps[current_pin_map][thisPin]["nickname"] != "nickname") {
 						newname = pinlist[0].maps[current_pin_map][thisPin]["nickname"] + " ";
@@ -817,7 +987,7 @@ function getAllPins() {
 					else {
 						heading = thisPin.replace("gpio_", "GPIO ");
 					}
-					// Finish button pair after right-hand details button is created
+					// Complete button and close button pair div if right-hand details button
 					if (pb % 2 == 0) {
 						pageSetText = pageSetText + buttoncol + "'>" + heading + "</button></div></div></div>";
 						pageSetText = pageSetText + "<br>";
@@ -828,6 +998,7 @@ function getAllPins() {
 				}
 				else {
 					// Will be power or GND pin
+					// Set button-color and class
 					if (thisPin.indexOf("3V3") != -1) {
 						buttoncol = "darkorange";
 						thisDivClass = "pi_power_3";
@@ -844,6 +1015,7 @@ function getAllPins() {
 						buttoncol = "Silver";
 						thisDivClass = "GND";
 					}
+					// Create button based on whether left or right
 					if (pb % 2 != 0) {	
 						pageSetText = pageSetText + "<div class='pinpair'><div class='pi_pin' style='float:left' id='" + thisPin;
 						pageSetText = pageSetText + "'><button class='pi_left' id='" + thisPin + "button'";
@@ -852,7 +1024,8 @@ function getAllPins() {
 						pageSetText = pageSetText + "<div class='pi_pin' style='float:right' id='" + thisPin;
 						pageSetText = pageSetText + "'><button class='" + thisDivClass + "' id='" + thisPin + "button'";
 					}
-						pageSetText = pageSetText + " type='button' onclick='showPinDetails(" + pinIndex + ")' style='background-color:";				
+					pageSetText = pageSetText + " type='button' onclick='showPinDetails(" + pinIndex + ")' style='background-color:";	
+					// Complete button and close button pair div if right-hand details button		
 					if (pb % 2 == 0) {
 						pageSetText = pageSetText + buttoncol + "'>" + thisPin + "</button></div></div></div>";
 						pageSetText = pageSetText + "<br>";
@@ -861,12 +1034,13 @@ function getAllPins() {
 						pageSetText = pageSetText + buttoncol + "'>" + thisPin + "</button></div>";						
 					}										
 				}
-				// If right-hand pin, create details divs for pin pair.
+				// If right-hand pin, create details divs below pin pair.
 				if (pb % 2 == 0) {
 					pageSetText = pageSetText + "</div><div style='width:100%' class='pindetails' id='" + previousPin + "_details'><h2>" + previousPin.replace('gpio_', 'GPIO ') + "</h2>"; //</div>
 					// Start details div for left-hand pin
 					if ((previousPin.indexOf("gpio") != -1)) {
 	 					pageSetText = pageSetText + "<p>" + previousPinSetting + "</p><p>Default state: " + previousPinState + "</p><p>Action: ";
+
 						// If pin is input and set to switch an output, display partner pin and action
 						if (pinlist[0].maps[current_pin_map][previousPin]["action"]["type"].indexOf("switchOut") != -1) {
 							pageSetText = pageSetText + "Switch GPIO " + pinlist[0].maps[current_pin_map][previousPin]["action"]["arg1"];
@@ -877,6 +1051,7 @@ function getAllPins() {
 								pageSetText = pageSetText + " on</p>";
 							}
 						}
+
 						// If pin is output set to manual control
 						else if (pinlist[0].maps[current_pin_map][previousPin]["action"]["type"] == "outManual") {
 							pageSetText = pageSetText + "Manual on/off</p>";
@@ -893,11 +1068,11 @@ function getAllPins() {
 						if (pinlist[0].maps[current_pin_map][previousPin]["action"]["timeout_type"] == "timeout") {
 							pageSetText = pageSetText + "<p>Switch back after  " + pinlist[0].maps[current_pin_map][previousPin]["action"]["timeout"] + " seconds</p>";
 						}
-						// Create button to change pin settings
+						// Create button to change load initial pin form and pin settings
 						pageSetText = pageSetText + "<button onclick='changePin()'>Change setting</button>";
 					}
 
-						pageSetText = pageSetText + "</div><div style='width:100%' class='pindetails' id='" + thisPin + "_details'><h2>" + thisPin.replace('gpio_', 'GPIO ') + "</h2>";
+					pageSetText = pageSetText + "</div><div style='width:100%' class='pindetails' id='" + thisPin + "_details'><h2>" + thisPin.replace('gpio_', 'GPIO ') + "</h2>";
 					// Start details div for right-hand pin
 					if ((thisPin.indexOf("gpio") != -1)) {
 	 					pageSetText = pageSetText + "<p>" + thisPinSetting + "</p><p>Default state: " + thisPinState + "</p><p>Action: ";
@@ -936,9 +1111,10 @@ function getAllPins() {
 	$('div#pin_set_holder').html(pageSetText);
 	// Reset pageSetText and call function to display Arduino pins
 	pageSetText = "";
-	getArduinoPins()
+	getArduinoPins();
 	};
 };
+
 
 
 
