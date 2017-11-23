@@ -7,8 +7,7 @@
 # You can find full details, setup and usage instructions at:
 # https://anthscomputercave.com/projects/aaimi/aaimi_gpio/aaimi_gpio.html?pagename=aaimi_gpio_features
 
-# This program runs in the background on a Raspberry Pi. You can switch the main loop on from the web-interface
-# and configure GPIO pins as various types of inputs and outputs. You can assign tasks to react to input events.
+# This program runs in the background on a Raspberry Pi. You can switch the main loop on from the web-interface and configure GPIO pins as various types of inputs and outputs. You can assign tasks to react to input events.
 # From the Run page you can switch outputs, PWM outputs and motors, and monitor the state of inputs.
 # Now supports easy configuration and control of 360 degree stepper motors to create turntables, panning systems, etc
 # Can send email notifications or POST requests when input pins change
