@@ -277,7 +277,7 @@ function centerMotor(pos) {
 
 function setOscillate(onOff) {
 	console.log(onOff);
-	posMessage = allPins[current_pin]["nickname"] + " " + active_current_pin;
+	posMessage = allPins[active_current_pin]["nickname"] + " " + active_current_pin;
 	$.post(commandPHP, {'commandsection':'oscillate', 'command':posMessage});
 	if (onOff == 0) {
 		console.log("Stopping");
@@ -291,6 +291,11 @@ function setOscillate(onOff) {
 	}		
 };
 
+// Send a command to read a distance sensor
+function sendDistanceCall() {
+$.post(commandPHP, {'commandsection':'takeMeasure', 'command':active_current_pin});
+setTimeout(getPinStatus, 400);
+};
 
 // Switch a standard output pin (on/off, pin number)
 function switchPin(action, swpin) {
@@ -550,8 +555,13 @@ function getPinStatus() {
 				allPins[key]["action"]["adjuster"] = pinlist[0].maps[current_pin_map][key]["action"]["adjuster"];
 				allPins[key]["action"]["rotation_type"] = pinlist[0].maps[current_pin_map][key]["action"]["rotation_type"];
 			}
+			else if (pinlist[0].maps[current_pin_map][key]["setting"] == "DistanceSensor") {
+				allPins[key]["action"]["distance"] = pinlist[0].maps[current_pin_map][key]["action"]["distance"];
+				allPins[key]["action"]["trig_distance"] = pinlist[0].maps[current_pin_map][key]["action"]["trig_distance"];
+				allPins[key]["action"]["trig_mode"] = pinlist[0].maps[current_pin_map][key]["action"]["trig_mode"];
+			}
 		}
-		console.log(active_current_pin);
+		//console.log(active_current_pin);
 		// Build HTML with pin details
 		for (ap = 0; ap < activePins.length; ap++) {
 			current_pin = activePins[ap];
@@ -566,6 +576,10 @@ function getPinStatus() {
 				// Created div with details for this pin. If output, add buttons to switch on and off
 				pageText = pageText + "<div onclick='showButtonDiv(" + ap + ")' id='pinid" + current_pin.replace("gpio_", "") + "' style='border-style:solid;border-radius:6px;' class='" + pinclass + "'><h2 type='button'>" + activePins[ap] + ": " + pinlist[0].maps[current_pin_map][current_pin]["nickname"] + "</h2>";
 				pageText = pageText + "<p>" + current_pin_setting + "</p><p>Action: " + pinlist[0].maps[current_pin_map][current_pin]["action"]["type"] + "</p><p>Status: " + pinlist[0].maps[current_pin_map][current_pin]["status"] + "</p>";
+				if ($.inArray("condition", pinlist[0].maps[current_pin_map][current_pin]) != -1) {
+					pageText = pageText + "<p>Only act if " + pinlist[0].maps[current_pin_map][current_pin]['condition'] + " is in event</p>";
+					allPins[key]["condition"] = pinlist[0].maps[current_pin_map][current_pin]["condition"];
+				}
 				if (pinlist[0].maps[current_pin_map][current_pin]["action"]["type"] == "countRecord") {
 					pageText = pageText + "<p>Count: " + pinlist[0].maps[current_pin_map][current_pin]["action"]["arg1"] + "</p>";
 				}	
@@ -578,6 +592,12 @@ function getPinStatus() {
 				else if (current_pin_setting == "Stepper") {
 					pageText = pageText + "<button onclick='showStepper()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Change</button>";
 					
+				}
+				else if (current_pin_setting == "DistanceSensor") {
+					if (pinlist[0].maps[current_pin_map][current_pin]["action"]["trig_mode"] == "manual") {
+						pageText = pageText + "<p>Distance: " + pinlist[0].maps[current_pin_map][current_pin]["action"]["distance"]	+ "</p>";				
+						pageText = pageText + "<button onclick='sendDistanceCall()' style='background-color:LightGreen;margin-bottom:20px' type='button'>Measure</button>";
+					}
 				}
 				// If PWM motor, add details to PWM list
 				else if (current_pin_setting == "PWMOutput") {

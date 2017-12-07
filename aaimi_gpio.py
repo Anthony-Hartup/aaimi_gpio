@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AAIMI GPIO 0.3
+# AAIMI GPIO 0.4
 # Configure and use Raspberry Pi GPIO pins and Arduino pins from a web interface 
 
 ###############
@@ -32,6 +32,17 @@ socketport = 50001
 
 # Program can save and load multiple pin configurations. session is default
 current_pin_map = "session"
+
+### ENABLE AND DISABLE FEATURES ####################
+# Use email notifications?
+email_enabled = "no"
+# Send HTTPS requests to a website with two parameters when a specific input pin goes High
+# Use only with HTTPS-enabled websites or protected LAN-based servers.
+http_enabled = "no"
+# Use a connected Arduino
+arduino_enabled = "no"
+
+##################################################
 
 # Pin configuration details for Pi and Arduino
 pins = {}
@@ -84,6 +95,10 @@ pwm_general_pins = {}
 # Count to determine which reserved variable AAIMI will use to define single GPIO PWM object
 led_count = 0
 
+# Distance sensor
+distance_sensors = {}
+
+
 # Input and output pins timout and timer settings
 # If both of these are empty the main loop will not monitor any pins
 # Input pins
@@ -102,22 +117,21 @@ hour_store = "00"
 ### Email settings #############
 
 # Use a dedicated system Gmail account to send emails when a specific pin goes High
-# Use email?
-email_enabled = "no"
+
 
 # By default the user enters the system email password in the web GUI to avoid storing it in code?
 # After system reboot email will not operate until user has re-enterd the password
-pass_entered = "no"
+pass_entered = "yes"
 
 if email_enabled == "yes":
     import aaimi_email_out
     # Dedicated Gmail address for system to use.
     # You'll need to modify settings for the Gmail account to allow third-party applications
-    aaimi_email_out.system_email = "yourSystemEmail@gmail.com"
+    aaimi_email_out.system_email = "systemGmail2@gmail.com"
     
     # To avoid the need to re-enter the system email password after each restart you can
     ### set your password below, then change the pass_entered variable to 'yes'. (Less secure)
-    aaimi_email_out.system_pass = ""
+    aaimi_email_out.system_pass = "systemPass"
     
     # Your email account (any type) to receive pin notification emails
     aaimi_email_out.user_email = "yourEmail@yourMail.com"
@@ -126,20 +140,18 @@ if email_enabled == "yes":
 
 ##### HTTP Settings #############
 
-# Send HTTPS requests to a website with two parameters when a specific input pin goes High
-# Use only with HTTPS-enabled websites or protected LAN-based servers.
-http_enabled = "no"
+
 if http_enabled == "yes":
-    url_to_send_to = "https://yourWebsite.php"
+    url_to_send_to = "http://yourUrl/request.php"
 
     # Is a username and password required for website?
     pass_required = "yes"
-    user_name = "yourName"
+    user_name = "yourUserName"
 
     # By default the user enters the website password in the web GUI to avoid storing it in code?
     # You can change the website_pass_entered variable to 'yes' and enter you website password below. (Less secure)
-    website_pass_entered = "no"
-    website_pass = ""
+    website_pass_entered = "yes"
+    website_pass = "yourWebsitePass"
     
     # Create a mock user-agent, some servers won't allow HTTP requests without one
     user_agent = {'User-agent': 'Mozilla/5.0'}
@@ -149,33 +161,32 @@ if http_enabled == "yes":
 ##################################################
 # Start serial connection with Arduino
 
-### Uncomment the following section to use an Arduino connected to the Pi via USB
+if arduino_enabled == "yes":
+    import serial
+    arduino = serial.Serial('/dev/ttyUSB0', 9600)
 
-##import serial
-##arduino = serial.Serial('/dev/ttyUSB0', 9600)
-##
-##def check(sensor):  # Check Arduino analog pin
-##    arduino.write(sensor)
-##    while True:
-##        try:
-##            time.sleep(0.01)
-##            reading = str(arduino.readline()).replace("\n", "")
-##            return float(reading)
-##        except:
-##            pass
-##
-##def check_digital_sensor(sensor):   # Check Arduino digital pin
-##    arduino.write(sensor)
-##    while True:
-##        try:
-##            time.sleep(0.01)        
-##            rawsense = arduino.readline()
-##            return int(rawsense)
-##        except:
-##            pass   
-##
-##def switch(r):  # Switch Arduino output pin
-##    arduino.write(r)
+def check(sensor):  # Check Arduino analog pin
+    arduino.write(sensor)
+    while True:
+        try:
+            time.sleep(0.01)
+            reading = str(arduino.readline()).replace("\n", "")
+            return float(reading)
+        except:
+            pass
+
+def check_digital_sensor(sensor):   # Check Arduino digital pin
+    arduino.write(sensor)
+    while True:
+        try:
+            time.sleep(0.01)        
+            rawsense = arduino.readline()
+            return int(rawsense)
+        except:
+            pass   
+
+def switch(r):  # Switch Arduino output pin
+    arduino.write(r)
 
 #######################################################
 
@@ -363,6 +374,21 @@ def load_pin_list():
                 if pins["maps"][current_pin_map][p]["action"]["timeout_type"] == "timeout" or pins["maps"][current_pin_map][p]["action"]["timer"] == "setTimes":
                     # Add to events folder for loop to monitor if timer or timeout set  [lastevent, timeoutseconds, timer/timeout]
                     event_times_out[target_pin] = [time.time(), pins["maps"][current_pin_map][p]["action"]["timeout"], pins["maps"][current_pin_map][p]["action"]["timeout_type"]]                    
+
+
+            elif pins["maps"][current_pin_map][p]["setting"] == "DistanceSensor":
+                echo_pin = int(str(p.replace("gpio_", "")))
+                trigger_pin = int(pins["maps"][current_pin_map][p]["action"]["triggerpin"])                
+                print("Setup dis pins")
+                GPIO.setup(trigger_pin, GPIO.OUT)
+                GPIO.output(trigger_pin, False)
+                GPIO.setup(echo_pin, GPIO.IN)
+                event_times[int(echo_pin)] = [time.time(), int(pins["maps"][current_pin_map][p]["action"]["timeout"]), pins["maps"][current_pin_map][p]["action"]["timeout_type"]]
+                    
+                # Add to time monitoring if pin is working on timer or timeout
+                if pins["maps"][current_pin_map][p]["action"]["timeout_type"] == "timeout" or pins["maps"][current_pin_map][p]["action"]["timer"] == "setTimes" or pins["maps"][current_pin_map][p]["action"]["trig_mode"] == "polling":
+                    # Add to events folder for loop to monitor if timer or timeout set  [lastevent, timeoutseconds, timer/timeout]
+                    event_times_out[target_pin] = [time.time(), pins["maps"][current_pin_map][p]["action"]["timeout"], pins["maps"][current_pin_map][p]["action"]["timeout_type"]]   
                     
             # All other types of pins (Raspberry Pi and Arduino)
             else:
@@ -503,6 +529,7 @@ def load_pin_list():
                     
                     # Add input to events folder for loop to monitor
                     event_times[target_pin] = [time.time(), pins["maps"][current_pin_map][p]["action"]["timeout"], pins["maps"][current_pin_map][p]["action"]["timeout_type"]]
+    print(pwm_pairs)
 
 
 # Configure settings for a single pin based on incoming space-separated string from browser
@@ -555,7 +582,7 @@ def configure_pin(orders, scope="full"):
     # Backup the selected pin in case of error
     backup_pin = pins["maps"][current_pin_map][pin_name]
 
-    # Load basic details to the specified pin map
+    #### Load basic details to the specified pin map ####
     pins["maps"][current_pin_map][pin_name]["setting"] = comms[3] # Output/PWMOutput Input/InputPullup/InputPullDown Analog Stepper
     pins["maps"][current_pin_map][pin_name]["nickname"] = comms[4] # Name to display on GPIO buttons
     pins["maps"][current_pin_map][pin_name]["default"] = comms[5] # Default state, Low/High
@@ -563,9 +590,38 @@ def configure_pin(orders, scope="full"):
     
     # The type of action for the pin
     pins["maps"][current_pin_map][pin_name]["action"]["type"] = comms[6] # switchOut (input), outManual (output) sendEmail sendWebRequest
+    
+    # Timer and timout settings
+    # Only between set times
+    # If comms[9] == 'timer', execute actions only between comms[10] and comms[11]
+    pins["maps"][current_pin_map][pin_name]["action"]["timer"] = comms[9]
+    pins["maps"][current_pin_map][pin_name]["action"]["times"] = [comms[10], comms[11]]
 
+    # Switch off on timeout
+    # It comms[12] != 'Indefinite', switch pin low after comms[13] seconds
+    pins["maps"][current_pin_map][pin_name]["action"]["timeout_type"] = comms[12]
+    pins["maps"][current_pin_map][pin_name]["action"]["timeout"] = comms[13]
+
+    # Add partner pin if event should switch an output
+    if "switchout" in comms[6]:
+        pins["maps"][current_pin_map][num_to_name(comms[7])]["partner"] = target_pin
+
+    #### Configure pin-type-specific pin details ###
+    # Distance sensor
+    if "Distance" in comms[3]:
+        print("Loading distance")
+        pins["maps"][current_pin_map][pin_name]["action"]["triggerpin"] = int(comms[8]) # Arg2, 
+        pins["maps"][current_pin_map][pin_name]["action"]["distance"] = 0 # Last measured distance
+        pins["maps"][current_pin_map][pin_name]["action"]["trig_distance"] = int(comms[14]) # Distance (CM) under/over that triggers an event
+        pins["maps"][current_pin_map][pin_name]["action"]["trig_mode"] = str(comms[15]) # manual or polling
+        if comms[15] == "polling" or comms[9] == "setTimes" or comms[12] == "timeout":
+            event_times[int(target_pin)] = [time.time(), int(comms[13]), comms[12]]
+        GPIO.setup(target_pin,GPIO.IN)
+        GPIO.setup(int(comms[8]),GPIO.OUT)
+        GPIO.output(int(comms[8]), False)
+    
     # Stepper Motor
-    if "Stepper" in comms[3]:
+    elif "Stepper" in comms[3]:
         stepper_motor_pins[comms[4]] = []
         # Get the other three stepper pins for motor
         pins["maps"][current_pin_map][pin_name]["action"]["arg1"] = comms[7] # Second motor pin (B) 23
@@ -613,16 +669,7 @@ def configure_pin(orders, scope="full"):
         else:
             pins["maps"][current_pin_map][pin_name]["action"]["right_pos"] = 180 + (180 + comms[20])  
         
-        # Timer and timout settings
-        # Motor operating between set times
-        # If comms[9] == 'timer', execute actions only between comms[10] and comms[11]
-        pins["maps"][current_pin_map][pin_name]["action"]["timer"] = comms[9]
-        pins["maps"][current_pin_map][pin_name]["action"]["times"] = [comms[10], comms[11]]
 
-        # Motor switch off on timeout
-        # It comms[12] != 'Indefinite', switch pin low after comms[13] seconds
-        pins["maps"][current_pin_map][pin_name]["action"]["timeout_type"] = comms[12]
-        pins["maps"][current_pin_map][pin_name]["action"]["timeout"] = comms[13]
 
         # Add to monitoring array if either timer or timeout set
         if pins["maps"][current_pin_map][pin_name]["action"]["timeout_type"] == "timeout" or pins["maps"][current_pin_map][pin_name]["action"]["timer"] == "setTimes":
@@ -630,12 +677,8 @@ def configure_pin(orders, scope="full"):
 
         
     else:
-        # All other pin types
-        if "switchout" in comms[6]:
-            # Input set to switch a previously configured output when triggered. Get output pin number
-            pins["maps"][current_pin_map][num_to_name(comms[7])]["partner"] = target_pin
-        
-        elif comms[6] == "sendEmail":
+        # All other pin types        
+        if comms[6] == "sendEmail":
             # Program will send an email to user any time the input is triggered
             pins["maps"][current_pin_map][pin_name]["action"]["arg1"] = str(comms[7]) # Subject line for email
             
@@ -656,22 +699,21 @@ def configure_pin(orders, scope="full"):
             pins["maps"][current_pin_map][pin_name]["action"]["arg2"] = float(comms[8]) # current reading for analog pins
         else:
             pins["maps"][current_pin_map][pin_name]["action"]["arg2"] = int(comms[8]) # default PWM speed for digital
-
-        # Timer and timout settings
-        # If comms[9] == 'timer', execute actions only between comms[10] and comms[11]
-        pins["maps"][current_pin_map][pin_name]["action"]["timer"] = comms[9]
-        pins["maps"][current_pin_map][pin_name]["action"]["times"] = [comms[10], comms[11]]
-        # It comms[12] != 'Indefinite', switch pin low after comms[13] seconds
-        print(comms[12])
-        print(comms[13])        
-        pins["maps"][current_pin_map][pin_name]["action"]["timeout_type"] = comms[12]
-        pins["maps"][current_pin_map][pin_name]["action"]["timeout"] = comms[13]
-        print("wa")
        
         # load inputs into event_times folder so AAIMI knows to monitor their state during each loop
         # Include timing details for their actions, eg timeout if input is triggering an output
-        if "Input" in comms[3] or "Analog" in comms[3]:
-            event_times[int(target_pin)] = [time.time(), int(comms[13]), comms[12]]
+        if "Input" in comms[3] or "Analog" in comms[3] or "Distance" in comms[3]:
+            # If pin is a conditional pin that must be in event before other specific pins events will trigger
+            if "condition" in comms:
+                condition_pin = comms[comms.index("condition") + 1]
+                pins["maps"][current_pin_map][pin_name]["condition"] = num_to_name(cond_pin)
+                
+            if "Distance" in comms[3]:
+                if comms[15] == "polling":
+                     event_times[int(target_pin)] = [time.time(), int(comms[13]), comms[12]]
+            else:
+                event_times[int(target_pin)] = [time.time(), int(comms[13]), comms[12]]
+                
             if "A" in pin_name:
                 pins["maps"][current_pin_map][pin_name]["action"]["arg3"] = float(comms[-1]) # Analog trigger point
                 # Interval to read analog pin, default is 10 seconds
@@ -694,7 +736,11 @@ def configure_pin(orders, scope="full"):
                     GPIO.output(int(target_pin), True)
                 elif comms[5] == "Low" and comms[3] != "PWMOutput":
                     GPIO.output(int(target_pin), False)
-
+            elif "Distance" in comms[3]:
+                GPIO.setup(int(target_pin), GPIO.IN)
+                GPIO.setup(int(comms[8]), GPIO.OUT)
+                GPIO.output(int(comms[8]), False)
+                    
             # Define inputs with pull-up or pull-down resistors if specified
             elif "Input" in comms[3]:
                 if "PullDown" in comms[3]:
@@ -703,6 +749,7 @@ def configure_pin(orders, scope="full"):
                     GPIO.setup(int(target_pin), GPIO.IN, pull_up_down=GPIO.PUD_UP)
                 else:
                     GPIO.setup(int(target_pin), GPIO.IN)
+                
                     
         # Configure bi-directional PWM DC motor
         if comms[3] == "PWMOutput" and "gpio" in pin_name:
@@ -1051,6 +1098,34 @@ def set_led_brightness(pwm_id_num, speed):
 
 ############
 
+# Check distance sensor
+def check_distance(dpin):
+    #print("Starting Distance Loop")
+    distance = 0
+    time.sleep(.15)
+    trigger = pins["maps"][current_pin_map][dpin]["action"]["triggerpin"]
+    echo = dpin.replace("gpio_", "")
+    # Send pulse to trigger pin and wait for return on echo pin
+    GPIO.output(int(trigger), True)
+    time.sleep(0.00002)
+    GPIO.output(int(trigger), False)
+    
+    start = time.time()
+    while GPIO.input(int(echo)) == 0:
+        start = time.time()
+
+    while GPIO.input(int(echo)) == 1:
+        stop = time.time()
+    # Calculate elapsed time
+    elapsed = stop - start
+    
+    # Distance pulse travelled one-way in that time is time
+    # multiplied by the speed of sound (cm/s) / 2
+    distance = (elapsed * 34000) / 2
+    print("Measured " + str(distance))
+    return "%.2f" % distance
+
+
 ################  Pin map management  ####################
 
 # Reset all GPIO pins and set the current pin configuration map to default.
@@ -1349,7 +1424,13 @@ def react(order):
         next_stepper_move.append(commands[1])
         next_stepper_move.append(new_pos) 
 
-    
+
+    # Measure with distance sensor
+    elif commands[0] == "takeMeasure":
+        pins["maps"][current_pin_map][commands[1]]["action"]["distance"] = check_distance(commands[1])
+        write_pin_list()
+
+                
     # Configure settings for new pin    
     elif commands[0] == "config":
         configure_pin(order)
@@ -1548,12 +1629,23 @@ while True:
                     # If Raspi
                     if et <= 27:
                         event_pin_name = "gpio_" + str(et)
-                        # If pin is High set to react when pin goes High, declare input event
-                        if GPIO.input(int(et)) == True and pins["maps"][current_pin_map][event_pin_name]["default"] == "Low":
-                            pin_status = "inEventHigh"
-                        # If Low and set to react when pin goes Low, declare input event    
-                        if GPIO.input(int(et)) == False and pins["maps"][current_pin_map][event_pin_name]["default"] == "High":
-                            pin_status = "inEventLow"
+
+                        # If a distance sensor set to automatic polling, check whether measurement is higher than trigger if default low, or lower than trigger if default high
+                        if pins["maps"][current_pin_map][event_pin_name]["setting"] == "DistanceSensor" and pins["maps"][current_pin_map][event_pin_name]["action"]["trig_mode"] == "polling":
+                            dis = check_distance(event_pin_name)
+                            if pins["maps"][current_pin_map][event_pin_name]["default"] == "Low":
+                                if float(dis) > pins["maps"][current_pin_map][event_pin_name]["action"]["trig_distance"]:
+                                    pin_status = "inEventHigh"
+                            elif pins["maps"][current_pin_map][event_pin_name]["default"] == "High":
+                                if float(dis) < pins["maps"][current_pin_map][event_pin_name]["action"]["trig_distance"]:
+                                    pin_status = "inEventLow"                            
+                        else:
+                            # If pin is High set to react when pin goes High, declare input event
+                            if GPIO.input(int(et)) == True and pins["maps"][current_pin_map][event_pin_name]["default"] == "Low":
+                                pin_status = "inEventHigh"
+                            # If Low and set to react when pin goes Low, declare input event    
+                            if GPIO.input(int(et)) == False and pins["maps"][current_pin_map][event_pin_name]["default"] == "High":
+                                pin_status = "inEventLow"
                             
                     # If Arduino digital input (Only D11 and D12 can be inputs)
                     elif et == 111 or et == 112:
@@ -1573,24 +1665,27 @@ while True:
                         # If specified number of loops have passed since last read
                         if pins["maps"][current_pin_map][event_pin_name]["action"]["arg4"][0] > pins["maps"][current_pin_map][event_pin_name]["action"]["arg4"][1]:
                             
+                            
                             # Reset read-frequency counter
                             pins["maps"][current_pin_map][event_pin_name]["action"]["arg4"][0] = 0
                             # Get pin reading from Arduino
-                            
                             pin_reading = float(check(pin_commands[event_pin_name][0]))
-                            print(pin_reading)
 
                             # Log new reading if voltage has changed by more than 10mV
                             if pins["maps"][current_pin_map][event_pin_name]["action"]["arg2"] != pin_reading:
-                                
+            
                                 # Set flag to update pin details file if reading has changed by more than 10mV
                                 if pins["maps"][current_pin_map][event_pin_name]["action"]["arg2"] - pin_reading > .01 or pin_reading - pins["maps"][current_pin_map][event_pin_name]["action"]["arg2"] > .01:
-                                    changed = "yes"                                
+                                    changed = "yes"
+                                    print(pin_reading)
+                                    if pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "sendWebRequest":
+                                        send_web_request(event_pin_name)
                                 pins["maps"][current_pin_map][event_pin_name]["action"]["arg2"] = pin_reading
                                 
                             # If set to react when analog reading higher than trigger point
                             if pin_reading >= pins["maps"][current_pin_map][event_pin_name]["action"]["arg3"] and pins["maps"][current_pin_map][event_pin_name]["default"] == "Low":
                                 pin_status = "inEventHigh"
+                                #pins["maps"][current_pin_map][event_pin_name]["status"] = "High"
                                 
                             # If set to react when analog reading lower than trigger point
                             elif pin_reading <= pins["maps"][current_pin_map][event_pin_name]["action"]["arg3"] and pins["maps"][current_pin_map][event_pin_name]["default"] == "High":
@@ -1602,7 +1697,14 @@ while True:
                             pin_status = pins["maps"][current_pin_map][event_pin_name]["status"]
 
                     # If not in default state, react accordingl  
-                    if "inEvent" in pin_status:    
+                    if "inEvent" in pin_status:
+
+                        # If pin has a conditional pin set, check whether that pin is in event
+                        conditions = "no"
+                        if "condition" in pins["maps"][current_pin_map][event_pin_name]:
+                            if pins["maps"][current_pin_map][pins["maps"][current_pin_map][event_pin_name]["condition"]]["status"] == pins["maps"][current_pin_map][pins["maps"][current_pin_map][event_pin_name]["condition"]]["default"]:
+                                # Condition not met, flag event reactions to not happen
+                                conditions = "yes"
                         # Log time of event and update pin status if changed
                         event_times[et][0] = time.time()
                         # Get new pin Low/High status
@@ -1612,55 +1714,79 @@ while True:
                         if pins["maps"][current_pin_map][event_pin_name]["status"] != status_filler:
                             pins["maps"][current_pin_map][event_pin_name]["status"] = status_filler
                             
+                            
                             # Switch an output on if pin is configured as switchout.
-                            if pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "switchOut":
+                            if "switchOut" in pins["maps"][current_pin_map][event_pin_name]["action"]["type"]:
                                 pairnum = pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]
-                                
-                                # If pin's action is on a timer, check if within start and finish times                                  
-                                if pins["maps"][current_pin_map][event_pin_name]["action"]["timer"] == "setTimes":
+                                pairpin = num_to_name(pairnum)
 
-                                    # Switch partner output on if within active hours
-                                    if event_pin_name in active_hours:
-                                        if int(pairnum) <= 27:  # Raspi
-                                            pairpin = "gpio_" + str(pairnum)
-                                            GPIO.output(int(pairnum), True)
-                                        elif int(pairnum) >= 100 and int(pairnum) <= 113:  # Arduino
-                                            pairpin = "D" + str(int(pairnum) - 100)
-                                            ard_command = pin_commands[pairpin][0]
-                                            switch(ard_command)
-                                        pins["maps"][current_pin_map][pairpin]["status"] = "High"
+                                # If event pin is set as a cutout switch for the switchOut pin, switch Low
+                                if pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "switchOutCut":                                    
+                                    if pins["maps"][current_pin_map][pairpin]["setting"] == "Output":
+                                        if "gpio" in pairpin: # Raspi
+                                            GPIO.output(int(pairnum), False)
+                                    # If a PWM motor
+                                    elif pins["maps"][current_pin_map][pairpin]["setting"] == "PWMOutput":
+                                        print("Stopping motor")
+                                        stop_motor(pins["maps"][current_pin_map][pairpin]["nickname"])
+                                    pins["maps"][current_pin_map][pairpin]["status"] = "Low"
 
-                                # If action set to go at any time, switch partner pin                                       
-                                else:                                  
-                                    if int(pairnum) <= 27:  # Raspi
-                                        pairpin = "gpio_" + str(pairnum)
-                                        GPIO.output(int(pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]), True)
-                                                                            
-                                    elif int(pairnum) >= 100 and int(pairnum) <= 113: # Arduino digital pin
-                                        pairpin = "D" + str(int(pairnum) - 100)
-                                        print(pairpin)
-                                        ard_command = pin_commands[pairpin][0]
-                                        switch(ard_command)                                                                                
-                                    pins["maps"][current_pin_map][pairpin]["status"] = "High"
+                                # If not cutout, set switchOut pin from default state to opposite state
+                                else:   
+                                    # If pin's action is on a timer, check if within start and finish times                                  
+                                    if pins["maps"][current_pin_map][event_pin_name]["action"]["timer"] == "setTimes":
 
-                                # Log switching time if pair pin is also has timeout set. Pin will switch back according to lowest timeout    
-                                if pins["maps"][current_pin_map][pairpin]["status"] == "High":
-                                    if int(pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]) in event_times_out:
-                                        event_times_out[pairnum][0] = int(time.time())                                    
+                                        # Switch partner output on if within active hours
+                                        if event_pin_name in active_hours and conditions == "no":
+                                            if int(pairnum) <= 27:  # Raspi
+                                                pairpin = "gpio_" + str(pairnum)
+                                                if pins["maps"][current_pin_map][pairpin]["default"] == "Low":
+                                                    GPIO.output(int(pairnum), True)
+                                                else:
+                                                    GPIO.output(int(pairnum), False)
+                                            elif int(pairnum) >= 100 and int(pairnum) <= 113:  # Arduino
+                                                pairpin = "D" + str(int(pairnum) - 100)
+                                                if pins["maps"][current_pin_map][pairpin]["default"] == "Low":
+                                                    pins["maps"][current_pin_map][pairpin]["status"] = "High"
+                                                    ard_command = pin_commands[pairpin][0]
+                                                else:
+                                                    pins["maps"][current_pin_map][pairpin]["status"] = "Low"
+                                                    ard_command = pin_commands[pairpin][1]
+                                                switch(ard_command)
+
+                                    # If action set to go at any time, switch partner pin                                       
+                                    else:
+                                        if conditions == "no":
+                                            if int(pairnum) <= 27:  # Raspi
+                                                pairpin = "gpio_" + str(pairnum)
+                                                GPIO.output(int(pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]), True)
+                                                                                    
+                                            elif int(pairnum) >= 100 and int(pairnum) <= 113: # Arduino digital pin
+                                                pairpin = "D" + str(int(pairnum) - 100)
+                                                print(pairpin)
+                                                ard_command = pin_commands[pairpin][0]
+                                                if conditions == "no":
+                                                    switch(ard_command)                                                                                
+                                            pins["maps"][current_pin_map][pairpin]["status"] = "High"
+
+                                    # Log switching time if pair pin is also has timeout set. Pin will switch back according to lowest timeout    
+                                    if pins["maps"][current_pin_map][pairpin]["status"] == "High":
+                                        if int(pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]) in event_times_out:
+                                            event_times_out[pairnum][0] = int(time.time())                                    
                                     
                             # Increment the event count if pin is set as 'countRecord'.
-                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "countRecord":
+                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "countRecord" and conditions == "no":
                                 pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"] += 1
                                 print("Count: " + str(pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]))
 
                             # If input set to trigger email, check if password has been entered
-                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "sendEmail" and pass_entered == "yes":
+                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "sendEmail" and pass_entered == "yes" and conditions == "no":
                                 subject = pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]
                                 subject_pin_state = pins["maps"][current_pin_map][event_pin_name]["status"]                                
                                 aaimi_email_out.send_email_report(subject, event_pin_name, subject_pin_state, arg3=str(time.strftime('%H:%M:%S')))
 
                             # If input set to trigger HTTP request, send request  
-                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "sendWebRequest":
+                            elif pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "sendWebRequest" and "A" not in event_pin_name and conditions == "no":
                                 send_web_request(event_pin_name)
                                 print("Sent")
                                 
@@ -1679,13 +1805,14 @@ while True:
                                 pins["maps"][current_pin_map][event_pin_name]["status"] = pins["maps"][current_pin_map][event_pin_name]["default"]
                                 changed = "yes"
                                 
-                            # If pin has partner output and timeout is set, check time elapsed since pin was last high
+                            # If pin has partner output and timeout is set, check time elapsed since pin was last high. Exclude pins set as a cutout
                             if pins["maps"][current_pin_map][event_pin_name]["action"]["type"] == "switchOut":
                                 pairnum = pins["maps"][current_pin_map][event_pin_name]["action"]["arg1"]
                                 pairpin = str(num_to_name(int(pairnum)))
-                                
+
+
                                 # Check if output partner pin is HIGH
-                                if pins["maps"][current_pin_map][pairpin]["status"] == "High" and pins["maps"][current_pin_map][event_pin_name]["action"]["timeout_type"] != "Indefinite":
+                                if pins["maps"][current_pin_map][pairpin]["status"] != pins["maps"][current_pin_map][pairpin]["default"] and pins["maps"][current_pin_map][event_pin_name]["action"]["timeout_type"] != "Indefinite":
                                     
                                     # Calculate time that input pin has been LOW
                                     gone = int(time.time()) - int(event_times[et][0])
@@ -1693,13 +1820,46 @@ while True:
                                     # Switch off partner output if timeout elapsed
                                     if event_times[et][2] == "timeout" and gone > int(event_times[et][1]):
                                         print("OFF")
-                                        if "gpio" in pairpin: # Raspi
-                                            GPIO.output(int(pairnum), False)
+                                        
+                                        # If switchOut pin is a standard output, switch to default Low/High
+                                        if pins["maps"][current_pin_map][pairpin]["setting"] == "Output":
+                                            if "gpio" in pairpin and pins["maps"][current_pin_map][pairpin]["default"] == "Low": # Raspi
+                                                GPIO.output(int(pairnum), False)
+                                            elif "gpio" in pairpin and pins["maps"][current_pin_map][pairpin]["default"] == "High": # Raspi
+                                                GPIO.output(int(pairnum), True)
+                                        # If a PWM motor
+                                        elif pins["maps"][current_pin_map][pairpin]["setting"] == "PWMOutput":
+                                            if pins["maps"][current_pin_map][pairpin]["default"] == "Low": # Raspi
+                                                stop_motor(pairnum)
+                                            elif "gpio" in pairpin and pins["maps"][current_pin_map][pairpin]["default"] == "High": # Raspi
+                                                start_motor(pairnum)                                           
+
+                                            
                                         elif "D" in pairpin:  # Arduino
                                             ard_command = pin_commands[pairpin][1]
                                             switch(ard_command)
-                                        pins["maps"][current_pin_map][pairpin]["status"] = "Low"
-                                        changed = "yes"                            
+                                        pins["maps"][current_pin_map][pairpin]["status"] = pins["maps"][current_pin_map][pairpin]["default"] 
+                                        changed = "yes"
+
+                                        
+
+                                
+##                                # Check if output partner pin is HIGH
+##                                if pins["maps"][current_pin_map][pairpin]["status"] == "High" and pins["maps"][current_pin_map][event_pin_name]["action"]["timeout_type"] != "Indefinite":
+##                                    
+##                                    # Calculate time that input pin has been LOW
+##                                    gone = int(time.time()) - int(event_times[et][0])
+##                                    
+##                                    # Switch off partner output if timeout elapsed
+##                                    if event_times[et][2] == "timeout" and gone > int(event_times[et][1]):
+##                                        print("OFF")
+##                                        if "gpio" in pairpin: # Raspi
+##                                            GPIO.output(int(pairnum), False)
+##                                        elif "D" in pairpin:  # Arduino
+##                                            ard_command = pin_commands[pairpin][1]
+##                                            switch(ard_command)
+##                                        pins["maps"][current_pin_map][pairpin]["status"] = "Low"
+##                                        changed = "yes"                            
 
 
             # Check any outputs set as timeout and switch LOW if time has elapsed since they were switched HIGH

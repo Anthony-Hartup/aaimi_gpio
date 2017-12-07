@@ -28,7 +28,7 @@
 <div id="emailDiv" style="display:none;">
 	<h2>Set Email password</h2>
 	<form id="emailform">
-	<input style='width:80%;' name="emailInput">
+	<input type="password" style='width:80%;' name="emailInput">
 	<input style='background-color:gray;width:80%;' type='submit' value='Submit' name='submit'>
 	</form>
 </div>
@@ -37,10 +37,20 @@
 <div id="websiteDiv" style="display:none;">
 	<h2>Set website password</h2>
 	<form id="websiteform">
-	<input style='width:80%;' name="websiteInput">
+	<input type="password" style='width:80%;' name="websiteInput">
 	<input style='background-color:gray;width:80%;' type='submit' value='Submit' name='submit'>
 	</form>
 </div>
+	<button style="background-color:blue;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" onclick="showVariables()">Variables</button>
+	<section id="varSection" style="display:none;">
+	<div id="variables" style="display:none;"></div>
+	<button style="background-color:DarkBlue;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" onclick="addVar()">Add Variable</button>
+	<form id="addVariable" style="display:none;">
+		<p>Enter variable name</p>
+		<input name="newVar">
+		<input style='background-color:gray;width:80%' type='submit' name='varSubmit'>
+	</form>
+	</section>
 	<button style="background-color:maroon;color:white;margin-top:20px;font-size:1.5em;margin-bottom:10px;" onclick="switchOnProgram('killAll', 'off')">Shut down Pi</button>
 </div>
 <!--Div to provide options for saving pin maps and reserring default pin map-->
@@ -85,6 +95,7 @@
 	<option value="Input">Input</option>
 	<option value="InputPullDown">InputPullDown</option>
 	<option value="InputPullUp">InputPullUp</option>
+	<option value="DistanceSensor">Distance Sensor</option>
 	</select>
 	<input id="inToOut" name="submit" type="submit" value="Next">
 	</section>
@@ -103,13 +114,19 @@
 	<p id="hilo">Choose what happens when this pin changes.</p>
 	<select onchange="changeFormFields('pinActionSelect')" id="pinActionSelect" name="pinActions">
 	<option value="pending">Select</option>
-	<option value="switchOut">Switch an output pin on</option>
+	<option value="switchOut">Switch an output pin on/off</option>
+	<option value="switchOutCut">Switch an output pin off</option>
+	<option value="conditional">Conditional Pin</option>
 	<option value="countRecord">Count or record input events</option>
 	<option value="sendEmail">Send email</option>
 	<option value="sendWebRequest">Send HTTP request</option>
+	<option value="nothing">Nothing, just display reading</option>
 	</select>
 	</section>
-
+	<section id="conditional" style="display:none;">
+	<p>Add a conditional pin number (optional).</p>
+	<input name="condition" value="None">	
+	</section>
 	<section id="emailSection" style="display:none;">
 	<p>Enter the heading for your email.</p>
 	<input name="email_heading" value="EmailHeading">
@@ -135,15 +152,26 @@
 	<section id="value2" style="display:none">
 	<input name="customValue2" value="YourMessage">
 	</section>
-
 	</section>
 
+	<section id="trigSection" style="display:none;">
+	<p>Enter pin number for trigger</p>
+	<input name="triggerpin" id="trigpin">
+	<select id="distanceMode" name="distancemode" onchange="changeFormFields('distanceMode')">
+	<option value="manual">Manual measure</option>
+	<option value="polling">Polling</option>
+	</select>
+	<section id="disTrig" style="display:none;">
+	<p>Enter an upper trigger distance</p>
+	<input name="triggerDistance">
+	</section>
+	</section>
 
 <!--// INPUT TO SWTCH OUTPUT FORM  -->
 	<section id="inputActionSection" style="display:none">
-	<p id="inOutNum">Enter output pin number.</p>
-	<input id="inOutNum" name="inOutPin">
-	<br>	
+	<p id="inOutNum">Enter number for output pin</p>
+	<input id="inOutNumber" name="inOutPin">
+
 	<p>Choose when this applies.</p>
 	<select id="chooseWhen" onchange="changeFormFields('chooseWhen')" name="inOutTiming">
 	<option value="Always">Always</option>
@@ -294,7 +322,10 @@
 	<option value="sendWebRequest">Send HTTP request</option>
 	</select>
 	</section>
-
+	<section id="conditional" style="display:none;">
+	<p>Add a conditional pin number (optional).</p>
+	<input name="condition" vale="None">	
+	</section>
 	<section id="emailSection" style="display:none;">
 	<p>Enter the heading for your email.</p>
 	<input name="email_heading" value="EmailHeading">

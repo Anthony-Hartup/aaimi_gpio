@@ -195,7 +195,7 @@ $('.pinform').submit(function(event) {
     current_pin_name = pin_namet;
     current_pintype = pin_typet;
 	// Choose which form and form fields to display based-on pin type
-	if (current_pintype.indexOf("Input") != -1 || current_pintype == "Analog") {
+	if (current_pintype.indexOf("Input") != -1 || current_pintype == "Analog" || current_pintype == "DistanceSensor") {
 		var inputOutputTextHeading = "<h2>" + current_pin + "</h2><h2>" + current_pin_name + ": " + current_pintype + "</h2>";
 		$('form.outpinform').attr('style', 'display:none');
 		$('form.pinform').attr('style', 'display:none');
@@ -203,8 +203,10 @@ $('.pinform').submit(function(event) {
 		$('section#inputSection').attr('style', 'display:block');
 		$('div#tempFormHeading').attr('style', 'display:block');
 		$('div#tempFormHeading').html(inputOutputTextHeading);
+		if (current_pintype == "DistanceSensor") {
+			$('section#trigSection').attr('style', 'display:block');
+		}
 		if (current_pintype == "Analog") {
-		// Display an input for a trigger point for the analog pin
 			$('.trig').attr('style', 'display:block');
 		}
 		else {
@@ -254,6 +256,10 @@ $('.inpinform').submit(function(event) {
 			pinAction = $uform.find( "select[name='pinActions']" ).val(),  // How to react to event
 			inOutPin = $uform.find( "input[name='inOutPin']" ).val(),  // output to switch on input event
 			emailhead = $uform.find( "input[name='email_heading']" ).val(),
+			distanceTrigger = $uform.find( "input[name='triggerpin']" ).val(),
+			distanceEvent = $uform.find( "input[name='triggerDistance']" ).val(),
+			distanceMode = $uform.find( "select[name='distancemode']" ).val(),
+			condition = $uform.find( "input[name='condition']" ).val(),
 			httpkey1 = $uform.find( "input[name='websiteKey1']" ).val(),
 			httpval1 = $uform.find( "select[name='webArg1']" ).val(),
 			httpValueCustom1 = $uform.find( "input[name='customValue1']" ).val(),
@@ -274,6 +280,7 @@ $('.inpinform').submit(function(event) {
 			inOutPin = $uform.find( "input[name='inOutPin']" ).val(),
 			triggerPoint = $uform.find( "input[name='trigger']" ).val(),   // Analog trigger point
 			emailhead = $uform.find( "input[name='email_heading']" ).val(),
+			condition = $uform.find( "input[name='condition']" ).val(),
 			inOutTiming = $uform.find( "select[name='inOutTiming']" ).val(),
 			httpkey1 = $uform.find( "input[name='websiteKey1']" ).val(),
 			httpval1 = $uform.find( "select[name='webArg1']" ).val(),
@@ -291,19 +298,29 @@ $('.inpinform').submit(function(event) {
 	// Create HTML test to display overview of pin after form submission
 	var inputOutputText = "<h2>" + current_pin + "</h2><h2>" + current_pin_name + ": " + current_pintype + "</h2><p>Defualt: " + pinhilo + "</p>";
 	// Add analog trigger point if pin is Arduino
-	if (current_pin.indexOf("gpio") == -1) {
+	if (current_pin.indexOf("A") != -1) {
 		if (triggerPoint != "") {
 			inputOutputText = inputOutputText + "<p>Analog Trigger Point: " + triggerPoint + "</p>"; 
 		}
 	}
 	// Set input pin to trigger output event
-	if (pinAction == "switchOut" || pinAction == "switchOutoff" || pinAction == "adjustPWM") { 
-		pimessage = pimessage + " " + pinAction + " " + inOutPin + " 0";
-		if (pinAction == "switchOut") {
-			inputOutputText = inputOutputText + "<p>Action: Swith GPIO" + inOutPin + " on</p>"; 
+	if (pinAction == "switchOut" || pinAction == "switchOutCut" || pinAction == "adjustPWM" || current_pintype == "DistanceSensor") { 
+		if (current_pintype == "DistanceSensor") {
+			if (pinAction == "switchOut" || pinAction == "switchOutCut") {
+				pimessage = pimessage + " " + pinAction + " " + inOutPin + " " + distanceTrigger;
+			}
+			else {
+				pimessage = pimessage + " " + pinAction + " 0 " + distanceTrigger;
+			}
 		}
 		else {
-			inputOutputText = inputOutputText + "<p>Action: Swith GPIO" + inOutPin + " off</p>";
+			pimessage = pimessage + " " + pinAction + " " + inOutPin + " 0";
+		}
+		if (pinAction == "switchOut") {
+			inputOutputText = inputOutputText + "<p>Action: Swith GPIO" + inOutPin + "</p>"; 
+		}
+		if (pinAction == "switchOutCut") {
+			inputOutputText = inputOutputText + "<p>Action: Cutoff switch for " + inOutPin + "</p>";
 		}
 		pimessage = pimessage + " " + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + keepOnTime;
 		// Timer options
@@ -351,10 +368,15 @@ $('.inpinform').submit(function(event) {
 		pimessage = pimessage + inOutTiming + " " + inOutTimeS + " " + inOutTimeE + " " + keepOn + " " + keepOnTime;
 		pimessage = pimessage + " " + httpkey1 + " " + firstValue + " " + httpkey2 + " " + secondValue;
 	}
-
+	if (current_pintype == "DistanceSensor") {
+		pimessage = pimessage + " " + distanceEvent + " " + distanceMode;
+	}
+	if (condition != "None") {
+		pimessage = pimessage + " condition " + condition;
+	}
 
 	// Add analog trigger point if Arduino
-	if (current_pin.indexOf("gpio") == -1) {
+	if (current_pin.indexOf("A") != -1) {
 		pimessage = pimessage + " " + triggerPoint;
 	}
 	// Replace form with pin overview
@@ -552,9 +574,10 @@ function changeFormFields(targetId) {
 	if (selectedValue.indexOf("Input") != -1) {
 		$('section#inputSection').attr('style', 'display:block');
 	}
-	else if (selectedValue == "switchOut" || selectedValue == "switchOutoff") {
+	else if (selectedValue == "switchOut" || selectedValue == "switchOutCut") {
 		$('section#inputActionSection').attr('style', 'display:block');
 		$('section#submitInput').attr('style', 'display:block');
+		$('section#conditional').attr('style', 'display:block');
 	}
 	else if (selectedValue == "Analog") {
 		console.log("AN");
@@ -586,17 +609,22 @@ function changeFormFields(targetId) {
 		$('section#submitOutput').attr('style', 'display:block');
 
 	}
-	else if (selectedValue == "countRecord") {
+	else if (selectedValue == "countRecord" || selectedValue == "conditional") {
 		$('section#submitInput').attr('style', 'display:block');
 		$('p#inPutMessage').attr('style', 'display:block');
+		if (selectedValue != "conditional") {
+			$('section#conditional').attr('style', 'display:block');
+		}
 	}
 	else if (selectedValue == "sendEmail") {
 		$('section#emailSection').attr('style', 'display:block');
-		$('section#submitInput').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');	
+		$('section#conditional').attr('style', 'display:block');
 	}
 	else if (selectedValue == "sendWebRequest") {
 		$('section#websiteSection').attr('style', 'display:block');
 		$('section#submitInput').attr('style', 'display:block');
+		$('section#conditional').attr('style', 'display:block');
 	}
 	else if (selectedValue == "custom1") {
 		$('section#value1').attr('style', 'display:block');
@@ -604,6 +632,12 @@ function changeFormFields(targetId) {
 	}
 	else if (selectedValue == "custom2") {
 		$('section#value2').attr('style', 'display:block');
+		$('section#submitInput').attr('style', 'display:block');
+	}
+	else if (selectedValue == "polling") {
+		$('section#disTrig').attr('style', 'display:block');
+	}
+	else if (selectedValue == "nothing") {
 		$('section#submitInput').attr('style', 'display:block');
 	}
 	// Arduino
@@ -812,7 +846,7 @@ function getArduinoPins() {
 
 					if (allPins[previousPin]['action']['type'].indexOf("switchOut") != -1) {
 						pageSetText = pageSetText + "<p>Switch GPIO " + allPins[previousPin]["action"]["arg1"];
-						if (allPins[previousPin]["action"]["type"] == "switchOutOff") {
+						if (allPins[previousPin]["action"]["type"] == "switchOutCut") {
 							pageSetText = pageSetText + " off</p>";
 						}
 						else {
@@ -853,7 +887,7 @@ function getArduinoPins() {
 					pageSetText = pageSetText + "<p>Action: " + allPins[thisPin]['action']['type'] + "</p>";
 					if (allPins[thisPin]['action']['type'].indexOf("switchOut") != -1) {
 						pageSetText = pageSetText + "<p>Switch GPIO " + allPins[thisPin]["action"]["arg1"];
-						if (allPins[thisPin]["action"]["type"] == "switchOutOff") {
+						if (allPins[thisPin]["action"]["type"] == "switchOutCut") {
 							pageSetText = pageSetText + " off</p>";
 						}
 						else {
@@ -933,7 +967,11 @@ function getAllPins() {
 				allPins[key]["action"]["pos"] = pinlist[0].maps[current_pin_map][key]["action"]["pos"];
 				allPins[key]["action"]["rotation_type"] = pinlist[0].maps[current_pin_map][key]["action"]["rotation_type"];
 				allPins[key]["action"]["adjuster"] = pinlist[0].maps[current_pin_map][key]["action"]["adjuster"];
-			}			
+			}
+			else if (pinlist[0].maps[current_pin_map][key]["setting"] == "DistanceSensor") {
+				allPins[key]["action"]["trig_distance"] = pinlist[0].maps[current_pin_map][key]["action"]["trig_distance"];
+				allPins[key]["action"]["trig_mode"] = pinlist[0].maps[current_pin_map][key]["action"]["trig_mode"];
+			}				
 		}
 		// Create HTML for Raspi pins
 		pageSetText = pageSetText + "<h2 style='color:white'>Raspberry Pi</h2>";
@@ -972,11 +1010,14 @@ function getAllPins() {
 					else if (pinlist[0].maps[current_pin_map][thisPin]["setting"].indexOf("Output") != -1) {
 						buttoncol = "LightGreen";
 					}
-					else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["setting"] != "OutputPartner") {
+					else if (pinlist[0].maps[current_pin_map][thisPin]["setting"] == "OutputPartner") {
 						buttoncol = "GreenYellow";
 					}
-					else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["setting"] != "Stepper") {
+					else if (pinlist[0].maps[current_pin_map][thisPin]["setting"] == "Stepper") {
 						buttoncol = "LightGreen";
+					}
+					else if (pinlist[0].maps[current_pin_map][thisPin]["setting"] == "DistanceSensor") {
+						buttoncol = "LightBlue";
 					}
 
 					// Prepend pin nickname to gpio number if set
@@ -1044,11 +1085,11 @@ function getAllPins() {
 						// If pin is input and set to switch an output, display partner pin and action
 						if (pinlist[0].maps[current_pin_map][previousPin]["action"]["type"].indexOf("switchOut") != -1) {
 							pageSetText = pageSetText + "Switch GPIO " + pinlist[0].maps[current_pin_map][previousPin]["action"]["arg1"];
-							if (pinlist[0].maps[current_pin_map][previousPin]["action"]["type"] == "switchOutOff") {
+							if (pinlist[0].maps[current_pin_map][previousPin]["action"]["type"] == "switchOutCut") {
 								pageSetText = pageSetText + " off</p>";
 							}
 							else {
-								pageSetText = pageSetText + " on</p>";
+								pageSetText = pageSetText + "</p>";
 							}
 						}
 
@@ -1078,11 +1119,11 @@ function getAllPins() {
 	 					pageSetText = pageSetText + "<p>" + thisPinSetting + "</p><p>Default state: " + thisPinState + "</p><p>Action: ";
 						if (pinlist[0].maps[current_pin_map][thisPin]["action"]["type"].indexOf("switchOut") != -1) {
 							pageSetText = pageSetText + "Switch GPIO " + pinlist[0].maps[current_pin_map][thisPin]["action"]["arg1"];
-							if (pinlist[0].maps[current_pin_map][thisPin]["action"]["type"] == "switchOutOff") {
+							if (pinlist[0].maps[current_pin_map][thisPin]["action"]["type"] == "switchOutCut") {
 								pageSetText = pageSetText + " off</p>";
 							}
 							else {
-								pageSetText = pageSetText + " off</p>";
+								pageSetText = pageSetText + "</p>";
 							}
 						}
 						else if (pinlist[0].maps[current_pin_map][thisPin]["action"]["type"] == "OutputPartner") {
